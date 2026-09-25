@@ -8,7 +8,8 @@
 - **Aryan Gupta** (Roll No: `BTCB25O1027`)  
 **Faculty Mentors:**
 - **Dr. Tejaswita Mishra** (Assistant Professor)
-- **Dr. Abhishek Dixit** (Coordinator)
+- **Dr. Abhishek Dixit** (Coordinator)  
+**GitHub Repository:** [https://github.com/Hanamdeo/Ledger---Macro-project](https://github.com/Hanamdeo/Ledger---Macro-project)
 
 ---
 
