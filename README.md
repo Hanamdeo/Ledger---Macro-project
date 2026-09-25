@@ -116,4 +116,4 @@ The pre-loaded dataset includes **54 realistic transactions** reflecting an Indi
 ## 🎓 Academic Compliance & Plagiarism Verification
 - **Coursework:** Micro Project-I, Flexible Curriculum Scheme (AICTE Model Curriculum 2018).
 - **Institute:** Madhav Institute of Technology & Science (MITS), Gwalior.
-- **Plagiarism Limit:** Similarity confirmed within institutional thresholds (< 20%) via Turnitin.
+
