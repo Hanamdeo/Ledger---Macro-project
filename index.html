@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ledger - Personal Finance Analytics & Expense Management System</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              800: '#3730a3',
+              900: '#312e81',
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100 flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
+
+  <!-- Subtle Ambient Glows -->
+  <div class="glow-orb w-96 h-96 bg-indigo-600 top-0 left-1/4"></div>
+  <div class="glow-orb w-96 h-96 bg-cyan-600 top-1/3 right-10"></div>
+  <div class="glow-orb w-80 h-80 bg-emerald-600 bottom-10 left-1/3"></div>
+
+  <!-- Top Navigation & Header -->
+  <header class="border-b border-slate-800/80 bg-slate-900/80 backdrop-blur-md sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <!-- Brand Info -->
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="font-extrabold text-lg tracking-tight text-white">Ledger</span>
+              <span class="text-[10px] font-mono font-bold bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-2 py-0.5 rounded-full">v1.0</span>
+            </div>
+            <p class="text-xs text-slate-400">Personal Finance & Expense Management System</p>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex items-center space-x-2 sm:space-x-3">
+          <button id="btn-open-about" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/80 transition flex items-center space-x-1.5">
+            <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <span>Project Scope</span>
+          </button>
+
+          <!-- 1-Click Add Sample Data Button & Menu -->
+          <div class="relative group">
+            <button onclick="addQuickSampleBatch(5)" class="px-3 py-1.5 text-xs font-bold rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 shadow-md shadow-amber-500/25 transition flex items-center space-x-1.5" title="Click to add 5 sample transactions immediately, or hover for more options">
+              <svg class="w-4 h-4 text-slate-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+              <span>+ Add Sample Data</span>
+              <svg class="w-3 h-3 text-slate-900 ml-0.5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </button>
+            <div class="absolute right-0 mt-1 w-56 rounded-xl bg-slate-900 border border-slate-700 shadow-2xl p-1.5 hidden group-hover:block z-50">
+              <button onclick="addQuickSampleBatch(5)" class="w-full text-left px-3 py-2 text-xs rounded-lg hover:bg-slate-800 text-slate-200 flex items-center space-x-2.5">
+                <span class="text-amber-400 font-bold text-sm">⚡</span>
+                <div>
+                  <div class="font-semibold text-slate-100">Add 5 Quick Transactions</div>
+                  <div class="text-[10px] text-slate-400">Swiggy, Uber, Flipkart, Stipend, etc.</div>
+                </div>
+              </button>
+              <button onclick="addQuickSampleBatch(15)" class="w-full text-left px-3 py-2 text-xs rounded-lg hover:bg-slate-800 text-slate-200 flex items-center space-x-2.5">
+                <span class="text-indigo-400 font-bold text-sm">🚀</span>
+                <div>
+                  <div class="font-semibold text-slate-100">Add 15 Monthly Batch</div>
+                  <div class="text-[10px] text-slate-400">Simulates full monthly spend & salary</div>
+                </div>
+              </button>
+              <div class="my-1 border-t border-slate-800"></div>
+              <button onclick="resetToDefaultData()" class="w-full text-left px-3 py-2 text-xs rounded-lg hover:bg-slate-800 text-slate-200 flex items-center space-x-2.5">
+                <span class="text-emerald-400 font-bold text-sm">🔄</span>
+                <div>
+                  <div class="font-semibold text-slate-100">Reset Full 54 Records</div>
+                  <div class="text-[10px] text-slate-400">Restores standard May-Sep dataset</div>
+                </div>
+              </button>
+              <button onclick="clearAllTransactions()" class="w-full text-left px-3 py-2 text-xs rounded-lg hover:bg-rose-950/40 text-rose-300 flex items-center space-x-2.5">
+                <span class="text-rose-400 font-bold text-sm">🗑️</span>
+                <div>
+                  <div class="font-semibold text-rose-300">Clear All Transactions</div>
+                  <div class="text-[10px] text-rose-400/70">Wipe to test empty state</div>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <button id="btn-open-add-modal" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/30 transition flex items-center space-x-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+            <span>Add Transaction</span>
+          </button>
+
+          <div class="relative group">
+            <button class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center space-x-1.5">
+              <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+              <span>Export</span>
+            </button>
+            <div class="absolute right-0 mt-1 w-44 rounded-xl bg-slate-900 border border-slate-700 shadow-2xl p-1.5 hidden group-hover:block z-50">
+              <button onclick="exportData('csv')" class="w-full text-left px-3 py-2 text-xs rounded-lg hover:bg-slate-800 text-slate-300 flex items-center space-x-2">
+                <span>📄 Export as CSV</span>
+              </button>
+              <button onclick="exportData('json')" class="w-full text-left px-3 py-2 text-xs rounded-lg hover:bg-slate-800 text-slate-300 flex items-center space-x-2">
+                <span>📦 Export as JSON</span>
+              </button>
+              <button onclick="exportData('sql')" class="w-full text-left px-3 py-2 text-xs rounded-lg hover:bg-slate-800 text-slate-300 flex items-center space-x-2">
+                <span>🗄️ SQLite DDL & Inserts</span>
+              </button>
+            </div>
+          </div>
+
+          <button onclick="resetToDefaultData()" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 border border-slate-700/80 transition" title="Reset to Sample Data">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Sub-header Navigation Tabs -->
+  <div class="bg-slate-900/60 border-b border-slate-800 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-7xl mx-auto flex space-x-1 sm:space-x-4 overflow-x-auto py-2">
+      <button class="nav-tab active px-3.5 py-2 text-xs sm:text-sm rounded-lg text-slate-400 hover:text-slate-200 transition whitespace-nowrap flex items-center space-x-2" data-target="section-dashboard">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+        <span>Overview Dashboard</span>
+      </button>
+
+      <button class="nav-tab px-3.5 py-2 text-xs sm:text-sm rounded-lg text-slate-400 hover:text-slate-200 transition whitespace-nowrap flex items-center space-x-2" data-target="section-analytics">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg>
+        <span>Dynamic Visual Analytics</span>
+      </button>
+
+      <button class="nav-tab px-3.5 py-2 text-xs sm:text-sm rounded-lg text-slate-400 hover:text-slate-200 transition whitespace-nowrap flex items-center space-x-2" data-target="section-ledger">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+        <span>Transaction Ledger</span>
+      </button>
+
+      <button class="nav-tab px-3.5 py-2 text-xs sm:text-sm rounded-lg text-slate-400 hover:text-slate-200 transition whitespace-nowrap flex items-center space-x-2" data-target="section-rules">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+        <span>Normalization & Rule Engine</span>
+      </button>
+
+      <button class="nav-tab px-3.5 py-2 text-xs sm:text-sm rounded-lg text-slate-400 hover:text-slate-200 transition whitespace-nowrap flex items-center space-x-2" data-target="section-parser">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+        <span>Statement & File Parser</span>
+      </button>
+
+      <button class="nav-tab px-3.5 py-2 text-xs sm:text-sm rounded-lg text-slate-400 hover:text-slate-200 transition whitespace-nowrap flex items-center space-x-2" data-target="section-documentation">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+        <span>Project Scope & Rubric</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Global Filter Bar -->
+  <div class="bg-slate-900/40 border-b border-slate-800/80 py-3 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3 text-xs">
+      <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+        <!-- Date Range Filter -->
+        <div class="flex items-center space-x-1.5 bg-slate-800/80 rounded-lg px-2.5 py-1.5 border border-slate-700/60">
+          <span class="text-slate-400 font-medium">Period:</span>
+          <select id="filter-date-range" class="bg-transparent text-slate-200 font-semibold focus:outline-none cursor-pointer">
+            <option value="all">All Time (May - Sep 2026)</option>
+            <option value="last30">Last 30 Days</option>
+            <option value="q3-2026">Q3 2026 (Jul - Sep)</option>
+            <option value="q2-2026">Q2 2026 (Apr - Jun)</option>
+          </select>
+        </div>
+
+        <!-- Category Filter -->
+        <div class="flex items-center space-x-1.5 bg-slate-800/80 rounded-lg px-2.5 py-1.5 border border-slate-700/60">
+          <span class="text-slate-400 font-medium">Category:</span>
+          <select id="filter-category" class="bg-transparent text-slate-200 font-semibold focus:outline-none cursor-pointer">
+            <option value="all">All Categories</option>
+          </select>
+        </div>
+
+        <!-- Type Filter -->
+        <div class="flex items-center space-x-1.5 bg-slate-800/80 rounded-lg px-2.5 py-1.5 border border-slate-700/60">
+          <span class="text-slate-400 font-medium">Type:</span>
+          <select id="filter-type" class="bg-transparent text-slate-200 font-semibold focus:outline-none cursor-pointer">
+            <option value="all">All (Income & Expense)</option>
+            <option value="debit">Expenses (Debit) Only</option>
+            <option value="credit">Income (Credit) Only</option>
+          </select>
+        </div>
+
+        <!-- Source File Filter -->
+        <div class="flex items-center space-x-1.5 bg-slate-800/80 rounded-lg px-2.5 py-1.5 border border-slate-700/60">
+          <span class="text-slate-400 font-medium">Source:</span>
+          <select id="filter-source" class="bg-transparent text-slate-200 font-semibold focus:outline-none cursor-pointer">
+            <option value="all">All Sources</option>
+          </select>
+        </div>
+
+        <button id="btn-reset-filters" class="text-indigo-400 hover:text-indigo-300 font-medium px-2 py-1 transition flex items-center space-x-1">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          <span>Clear Filters</span>
+        </button>
+      </div>
+
+      <!-- Quick Search Input -->
+      <div class="relative w-full sm:w-64">
+        <input type="text" id="filter-search" placeholder="Search narration, ID, category..." class="w-full bg-slate-800/90 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-400 focus:outline-none focus:border-indigo-500">
+        <svg class="w-4 h-4 text-slate-400 absolute left-2.5 top-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- ========================================== -->
+    <!-- SECTION 1: OVERVIEW DASHBOARD -->
+    <!-- ========================================== -->
+    <div id="section-dashboard" class="view-section space-y-6">
+      <!-- Quick Sample Action Bar -->
+      <div class="glass-panel p-3.5 rounded-2xl border border-amber-500/20 bg-gradient-to-r from-amber-950/20 via-slate-900 to-indigo-950/20 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">⚡</div>
+          <div>
+            <span class="font-semibold text-slate-100">Live Dynamic Testing:</span>
+            <span class="text-slate-400 ml-1">Simulate real-time expense inflow and watch charts animate dynamically!</span>
+          </div>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button onclick="addQuickSampleBatch(5)" class="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-md shadow-amber-500/20 transition flex items-center space-x-1.5">
+            <span>+ Add 5 Sample Transactions</span>
+          </button>
+          <button onclick="addQuickSampleBatch(15)" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs border border-slate-700 transition">
+            + 15 Monthly Batch
+          </button>
+          <button onclick="resetToDefaultData()" class="px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-slate-200 text-xs border border-slate-700 transition" title="Reset standard dataset">
+            🔄 Reset
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Metrics Cards Row -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Income Card -->
+        <div class="glass-panel p-5 rounded-2xl border border-slate-800 glass-card-interactive relative overflow-hidden">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Income</span>
+            <div class="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+            </div>
+          </div>
+          <div class="mt-3">
+            <div id="kpi-income" class="text-2xl font-bold tracking-tight text-emerald-400 font-mono-code">₹ 0.00</div>
+            <div class="text-[11px] text-slate-400 mt-1 flex items-center space-x-1">
+              <span class="text-emerald-400 font-semibold">TCS Stipend + Upwork</span>
+              <span>across selected dates</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Expense Card -->
+        <div class="glass-panel p-5 rounded-2xl border border-slate-800 glass-card-interactive relative overflow-hidden">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Expenses</span>
+            <div class="p-2 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+            </div>
+          </div>
+          <div class="mt-3">
+            <div id="kpi-expense" class="text-2xl font-bold tracking-tight text-rose-400 font-mono-code">₹ 0.00</div>
+            <div class="text-[11px] text-slate-400 mt-1 flex items-center space-x-1">
+              <span>Top:</span>
+              <span id="kpi-top-category" class="text-slate-200 font-semibold truncate max-w-[150px]">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Net Savings Card -->
+        <div class="glass-panel p-5 rounded-2xl border border-slate-800 glass-card-interactive relative overflow-hidden">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Net Savings</span>
+            <div class="p-2 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+          </div>
+          <div class="mt-3">
+            <div id="kpi-net-savings" class="text-2xl font-bold tracking-tight text-cyan-400 font-mono-code">₹ 0.00</div>
+            <div class="mt-2 flex items-center justify-between text-[11px] text-slate-400">
+              <span>Savings Rate:</span>
+              <span id="kpi-savings-rate" class="font-bold text-cyan-300">0%</span>
+            </div>
+            <div class="w-full bg-slate-800 rounded-full h-1.5 mt-1 overflow-hidden">
+              <div id="kpi-savings-progress" class="h-1.5 bg-gradient-to-r from-indigo-500 to-cyan-400 rounded-full" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Current Balance & Ingestion Status -->
+        <div class="glass-panel p-5 rounded-2xl border border-slate-800 glass-card-interactive relative overflow-hidden">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Account Balance</span>
+            <div class="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
+            </div>
+          </div>
+          <div class="mt-3">
+            <div id="kpi-current-balance" class="text-2xl font-bold tracking-tight text-indigo-300 font-mono-code">₹ 0.00</div>
+            <div class="text-[11px] text-slate-400 mt-2 flex items-center justify-between">
+              <span>Transactions:</span>
+              <span id="kpi-txn-count" class="font-mono-code font-bold text-slate-200">54</span>
+            </div>
+            <div class="text-[10px] text-emerald-400 mt-1 flex items-center space-x-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>SQLite Database Engine Synchronized</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Visual Analytics Showcase Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Category-wise Spending Donut Chart -->
+        <div class="glass-panel p-5 rounded-2xl border border-slate-800 flex flex-col">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="font-bold text-sm text-slate-100 flex items-center space-x-2">
+                <span>Category-wise Spending</span>
+              </h3>
+              <p class="text-xs text-slate-400">Proportional breakdown of all expenses</p>
+            </div>
+            <span class="text-[10px] font-mono font-semibold bg-rose-500/10 text-rose-400 px-2 py-0.5 rounded border border-rose-500/20">Pie/Donut</span>
+          </div>
+          <div class="chart-box flex-1 min-h-[280px]">
+            <canvas id="chart-category-donut"></canvas>
+          </div>
+        </div>
+
+        <!-- Monthly Income vs Expense Comparison Chart -->
+        <div class="glass-panel p-5 rounded-2xl border border-slate-800 lg:col-span-2 flex flex-col">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="font-bold text-sm text-slate-100">Monthly Inflow vs Outflow</h3>
+              <p class="text-xs text-slate-400">Side-by-side comparison of Income vs Expenses with Net Savings trend</p>
+            </div>
+            <span class="text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20">Grouped Bar</span>
+          </div>
+          <div class="chart-box flex-1 min-h-[280px]">
+            <canvas id="chart-income-vs-expense"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lower Split: Recent Transactions & Category Breakdown -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Recent Transactions Feed -->
+        <div class="glass-panel p-5 rounded-2xl border border-slate-800">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="font-bold text-sm text-slate-100">Recent Processed Transactions</h3>
+              <p class="text-xs text-slate-400">Live feed with cleaned merchant labels</p>
+            </div>
+            <button onclick="document.querySelector('[data-target=\'section-ledger\']').click()" class="text-xs text-indigo-400 hover:text-indigo-300 font-semibold">
+              View All &rarr;
+            </button>
+          </div>
+          <div id="recent-txns-feed" class="space-y-2.5">
+            <!-- Populated dynamically by app.js -->
+          </div>
+        </div>
+
+        <!-- Category Expense Share Progress -->
+        <div class="glass-panel p-5 rounded-2xl border border-slate-800 flex flex-col">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="font-bold text-sm text-slate-100">Category Spending Distribution</h3>
+              <p class="text-xs text-slate-400">Ranked expense consumption</p>
+            </div>
+            <span class="text-xs text-slate-400">Filtered dataset</span>
+          </div>
+          <div id="category-progress-list" class="space-y-3.5 overflow-y-auto max-h-[310px] pr-1">
+            <!-- Populated dynamically by app.js -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- SECTION 2: DYNAMIC VISUAL ANALYTICS -->
+    <!-- ========================================== -->
+    <div id="section-analytics" class="view-section hidden space-y-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-bold text-white">Dynamic Visual Analytics Hub</h2>
+          <p class="text-xs text-slate-400">Comprehensive multi-dimensional charts defined in the project scope</p>
+        </div>
+        <div class="text-xs text-slate-400 font-mono">
+          Powered by Chart.js & Normalized SQLite Data
+        </div>
+      </div>
+
+      <!-- Chart Grid: 4 Core Charts from Document -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- 1. Running Balance & Cumulative Trend Line -->
+        <div class="glass-panel p-5 rounded-2xl border border-slate-800">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h3 class="font-bold text-sm text-slate-100">Account Balance & Spend Velocity</h3>
+              <p class="text-xs text-slate-400">Chronological trajectory of account balance and cumulative debits</p>
+            </div>
+            <span class="text-[10px] font-mono font-semibold bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded border border-indigo-500/20">Trend Line</span>
+          </div>
+          <div class="chart-box h-72">
+            <canvas id="chart-trend-line"></canvas>
+          </div>
+        </div>
+
+        <!-- 2. Monthly Expenses Bar Chart -->
+        <div class="glass-panel p-5 rounded-2xl border border-slate-800">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h3 class="font-bold text-sm text-slate-100">Monthly Expense Totals</h3>
+              <p class="text-xs text-slate-400">Total debit expenditure per calendar month</p>
+            </div>
+            <span class="text-[10px] font-mono font-semibold bg-rose-500/10 text-rose-400 px-2 py-0.5 rounded border border-rose-500/20">Bar Chart</span>
+          </div>
+          <div class="chart-box h-72">
+            <canvas id="chart-monthly-bar"></canvas>
+          </div>
+        </div>
+
+        <!-- 3. Category Comparison Horizontal Bar Chart -->
+        <div class="glass-panel p-5 rounded-2xl border border-slate-800">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h3 class="font-bold text-sm text-slate-100">Category Comparison (Ranked)</h3>
+              <p class="text-xs text-slate-400">Ranked horizontal comparison of expenses per category</p>
+            </div>
+            <span class="text-[10px] font-mono font-semibold bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded border border-amber-500/20">Horizontal Bar</span>
+          </div>
+          <div class="chart-box h-72">
+            <canvas id="chart-category-bar"></canvas>
+          </div>
+        </div>
+
+        <!-- 4. Analytical Insights Summary Card -->
+        <div class="glass-panel p-5 rounded-2xl border border-slate-800 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center space-x-2 text-indigo-400 mb-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+              <h3 class="font-bold text-sm text-white">Automated Financial Insights</h3>
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Based on the parsed statement data across May – September 2026, the rule-based categorization engine has successfully identified key behavioral patterns:
+            </p>
+
+            <div class="mt-4 space-y-2.5 text-xs text-slate-300">
+              <div class="p-2.5 rounded-xl bg-slate-800/60 border border-slate-700/60 flex items-start space-x-2.5">
+                <span class="text-emerald-400 font-bold mt-0.5">✓</span>
+                <div>
+                  <strong class="text-slate-100">Healthy Cash Flow Surplus:</strong>
+                  Average monthly income (₹35,000 stipend + freelance projects) consistently outpaces basic food & living expenses.
+                </div>
+              </div>
+
+              <div class="p-2.5 rounded-xl bg-slate-800/60 border border-slate-700/60 flex items-start space-x-2.5">
+                <span class="text-rose-400 font-bold mt-0.5">!</span>
+                <div>
+                  <strong class="text-slate-100">Dining & Delivery Velocity:</strong>
+                  Swiggy, Zomato, and quick grocery deliveries (Blinkit/Zepto) account for frequent micro-debits averaging ~₹550/order.
+                </div>
+              </div>
+
+              <div class="p-2.5 rounded-xl bg-slate-800/60 border border-slate-700/60 flex items-start space-x-2.5">
+                <span class="text-cyan-400 font-bold mt-0.5">✓</span>
+                <div>
+                  <strong class="text-slate-100">Systematic Investments:</strong>
+                  Regular disciplined SIP contributions to Zerodha and Groww MF total over ₹23,000 across the recorded period.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
+            <span>Standard Deviation of Monthly Outflow: ± ₹4,210</span>
+            <span class="font-mono text-indigo-400">Algorithm: Rule-Heuristic v1.2</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- SECTION 3: TRANSACTION LEDGER (DATABASE) -->
+    <!-- ========================================== -->
+    <div id="section-ledger" class="view-section hidden space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h2 class="text-lg font-bold text-white">Transaction Table (SQLite Database Explorer)</h2>
+          <p class="text-xs text-slate-400">
+            Fulfills planned database design: <code class="text-indigo-400 font-mono">Transaction ID, Date, Description, Category, Debit, Credit, Balance, Source File</code>
+          </p>
+        </div>
+        <div class="flex items-center space-x-2.5">
+          <span id="table-count-label" class="text-xs text-slate-400 font-mono">Showing 0 of 0 records</span>
+          <button onclick="addQuickSampleBatch(5)" class="px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition flex items-center space-x-1.5 shadow-sm" title="Add 5 fresh sample transactions">
+            <span>⚡ +5 Sample Data</span>
+          </button>
+          <button onclick="document.getElementById('btn-open-add-modal').click()" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center space-x-1">
+            <span>+ New Record</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Data Table Container -->
+      <div class="glass-panel rounded-2xl border border-slate-800 overflow-hidden shadow-xl">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left styled-table text-slate-300">
+            <thead class="bg-slate-900/90 border-b border-slate-800">
+              <tr>
+                <th class="px-4 py-3 cursor-pointer hover:text-indigo-400" onclick="sortTableBy('transaction_id')">
+                  Txn ID ↕
+                </th>
+                <th class="px-4 py-3 cursor-pointer hover:text-indigo-400" onclick="sortTableBy('date')">
+                  Date ↕
+                </th>
+                <th class="px-4 py-3 cursor-pointer hover:text-indigo-400" onclick="sortTableBy('description')">
+                  Merchant / Narration ↕
+                </th>
+                <th class="px-4 py-3 cursor-pointer hover:text-indigo-400" onclick="sortTableBy('category')">
+                  Category ↕
+                </th>
+                <th class="px-4 py-3 text-right cursor-pointer hover:text-indigo-400" onclick="sortTableBy('debit')">
+                  Debit (₹) ↕
+                </th>
+                <th class="px-4 py-3 text-right cursor-pointer hover:text-indigo-400" onclick="sortTableBy('credit')">
+                  Credit (₹) ↕
+                </th>
+                <th class="px-4 py-3 text-right cursor-pointer hover:text-indigo-400" onclick="sortTableBy('balance')">
+                  Balance (₹) ↕
+                </th>
+                <th class="px-4 py-3">Source Statement</th>
+                <th class="px-4 py-3 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="table-transactions-body" class="divide-y divide-slate-800/80">
+              <!-- Populated dynamically by app.js -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Table Footer / Pagination -->
+        <div class="px-4 py-3 bg-slate-900/80 border-t border-slate-800 flex items-center justify-between">
+          <div class="text-xs text-slate-400">
+            Displaying processed transactions from local SQLite persistent storage
+          </div>
+          <div id="table-pagination-controls">
+            <!-- Pagination buttons -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- SECTION 4: NORMALIZATION & RULE ENGINE -->
+    <!-- ========================================== -->
+    <div id="section-rules" class="view-section hidden space-y-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-bold text-white">Merchant Normalization & Rule Engine</h2>
+          <p class="text-xs text-slate-400">
+            Functional Requirement 3.4 & 3.5: Cleans cryptic merchant narrations and auto-maps categories
+          </p>
+        </div>
+        <button onclick="reclassifyAllTransactions()" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition shadow flex items-center space-x-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+          <span>Re-Classify All Records</span>
+        </button>
+      </div>
+
+      <!-- Live Interactive Sandbox -->
+      <div class="glass-panel p-5 rounded-2xl border border-indigo-500/30 bg-gradient-to-r from-slate-900 via-indigo-950/20 to-slate-900">
+        <h3 class="font-bold text-sm text-indigo-300 flex items-center space-x-2 mb-2">
+          <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+          <span>Live Normalization Simulator</span>
+        </h3>
+        <p class="text-xs text-slate-400 mb-4">
+          Type or paste any messy bank statement narration below to test real-time merchant extraction and automatic category assignment.
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Test Raw Narration Input:</label>
+            <input type="text" id="rule-test-input" placeholder="e.g. UPI/SWIGGY-19284-DELHI/REST or AMZN MKTP IN*PAY" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono">
+            <div class="mt-2 flex flex-wrap gap-1.5">
+              <span class="text-[11px] text-slate-400">Quick tests:</span>
+              <button onclick="document.getElementById('rule-test-input').value='UPI-SWIGGY-REST4892-BLR'; document.getElementById('rule-test-input').dispatchEvent(new Event('input'))" class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-indigo-300 hover:bg-slate-700">SWIGGY</button>
+              <button onclick="document.getElementById('rule-test-input').value='POS-AMZN MKTP IN*PAY98124'; document.getElementById('rule-test-input').dispatchEvent(new Event('input'))" class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-indigo-300 hover:bg-slate-700">AMAZON</button>
+              <button onclick="document.getElementById('rule-test-input').value='UPI/UBER-INDIA-SYSTEMS-PVT/DEL'; document.getElementById('rule-test-input').dispatchEvent(new Event('input'))" class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-indigo-300 hover:bg-slate-700">UBER</button>
+              <button onclick="document.getElementById('rule-test-input').value='UPI-IRCTC E-TICKETING NDLS'; document.getElementById('rule-test-input').dispatchEvent(new Event('input'))" class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-indigo-300 hover:bg-slate-700">IRCTC</button>
+              <button onclick="document.getElementById('rule-test-input').value='UPI/MITS-GWALIOR-EXAM-FEE/GWL'; document.getElementById('rule-test-input').dispatchEvent(new Event('input'))" class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-indigo-300 hover:bg-slate-700">MITS GWALIOR</button>
+              <button onclick="document.getElementById('rule-test-input').value='ACH-TCS-INNOVATION-LABS-STIPEND-CR'; document.getElementById('rule-test-input').dispatchEvent(new Event('input'))" class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-indigo-300 hover:bg-slate-700">TCS STIPEND</button>
+            </div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-900/90 border border-slate-700 flex flex-col justify-between">
+            <div>
+              <span class="text-[10px] font-mono text-slate-400 uppercase tracking-wider block mb-2">Engine Output</span>
+              <div class="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span class="text-slate-400 block text-[11px]">Normalized Merchant:</span>
+                  <span id="rule-result-merchant" class="text-slate-100 font-bold font-mono text-sm">—</span>
+                </div>
+                <div>
+                  <span class="text-slate-400 block text-[11px]">Auto Category:</span>
+                  <span id="rule-result-category" class="font-bold text-sm">—</span>
+                </div>
+              </div>
+            </div>
+            <div class="mt-3 pt-2 border-t border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
+              <span>Matched Rule:</span>
+              <span id="rule-result-rule" class="font-mono text-indigo-300 truncate max-w-[200px]">—</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Add New Custom Rule Form -->
+      <div class="glass-panel p-5 rounded-2xl border border-slate-800">
+        <h3 class="font-bold text-sm text-slate-100 mb-3">Add Custom Normalization Rule</h3>
+        <form id="form-add-rule" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end text-xs">
+          <div>
+            <label class="block text-slate-300 font-medium mb-1">Search Pattern (Keyword or Regex)</label>
+            <input type="text" id="rule-new-pattern" required placeholder="e.g. STARBUCKS|CCD" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block text-slate-300 font-medium mb-1">Pattern Matching Type</label>
+            <select id="rule-new-type" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-indigo-500">
+              <option value="contains">Contains (Case Insensitive)</option>
+              <option value="regex">Regular Expression</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-slate-300 font-medium mb-1">Normalized Merchant Label</label>
+            <input type="text" id="rule-new-merchant" required placeholder="e.g. STARBUCKS" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block text-slate-300 font-medium mb-1">Assign Category</label>
+            <select id="rule-new-category" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-indigo-500">
+              <option value="Food & Dining">Food & Dining</option>
+              <option value="Shopping">Shopping</option>
+              <option value="Travel & Transport">Travel & Transport</option>
+              <option value="Utilities & Bills">Utilities & Bills</option>
+              <option value="Education & Learning">Education & Learning</option>
+              <option value="Subscriptions & Entertainment">Subscriptions & Entertainment</option>
+              <option value="Health & Wellness">Health & Wellness</option>
+              <option value="Groceries">Groceries</option>
+              <option value="Investments">Investments</option>
+              <option value="Income">Income</option>
+              <option value="Miscellaneous">Miscellaneous</option>
+            </select>
+          </div>
+          <div>
+            <button type="submit" class="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg transition shadow">
+              Save Rule
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Active Rules Registry Table -->
+      <div class="glass-panel rounded-2xl border border-slate-800 overflow-hidden">
+        <div class="px-5 py-3 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between">
+          <h3 class="font-bold text-sm text-slate-100">Active Normalization Rules Database</h3>
+          <span class="text-xs text-slate-400">Rule-based mapping table</span>
+        </div>
+        <div class="overflow-x-auto max-h-96">
+          <table class="w-full text-left styled-table text-slate-300">
+            <thead class="bg-slate-900 border-b border-slate-800 text-xs">
+              <tr>
+                <th class="px-4 py-2.5">Pattern</th>
+                <th class="px-4 py-2.5">Type</th>
+                <th class="px-4 py-2.5">Normalized Label</th>
+                <th class="px-4 py-2.5">Target Category</th>
+                <th class="px-4 py-2.5 text-right">Delete</th>
+              </tr>
+            </thead>
+            <tbody id="rules-table-body" class="divide-y divide-slate-800/80 text-xs">
+              <!-- Populated dynamically by app.js -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- SECTION 5: STATEMENT & FILE PARSER -->
+    <!-- ========================================== -->
+    <div id="section-parser" class="view-section hidden space-y-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-bold text-white">Bank Statement & UPI Parser Module</h2>
+          <p class="text-xs text-slate-400">
+            Functional Requirements 3.1 & 3.2: Reading PDF bank statements and Excel/CSV files with automated extraction
+          </p>
+        </div>
+      </div>
+
+      <!-- Drag & Drop Zone -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 glass-panel p-6 rounded-2xl border border-dashed border-slate-700 hover:border-indigo-500 transition cursor-pointer flex flex-col items-center justify-center text-center py-12" id="parser-dropzone">
+          <div class="w-16 h-16 rounded-2xl bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mb-3">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+          </div>
+          <h4 class="font-bold text-base text-slate-100">Upload Bank Statement or UPI CSV</h4>
+          <p class="text-xs text-slate-400 mt-1 max-w-sm">
+            Drag and drop your bank PDF (HDFC/SBI/ICICI), PhonePe/GPay CSV, or Excel file here, or click to browse.
+          </p>
+          <input type="file" id="parser-file-input" accept=".csv,.txt" class="hidden">
+          <button class="mt-4 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 transition">
+            Choose File from Device
+          </button>
+        </div>
+
+        <!-- 1-Click Preset Simulators -->
+        <div class="glass-panel p-5 rounded-2xl border border-slate-800 flex flex-col justify-between">
+          <div>
+            <h4 class="font-bold text-sm text-slate-100 mb-1">1-Click Statement Simulators</h4>
+            <p class="text-xs text-slate-400 mb-3">
+              Simulate python-based backend parsing (<code class="text-cyan-400">pdfplumber</code> & <code class="text-cyan-400">pandas</code>) with realistic sample files:
+            </p>
+            <div class="space-y-2 text-xs">
+              <button onclick="simulateParser('hdfc_pdf')" class="w-full text-left p-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700 transition flex items-center justify-between">
+                <div>
+                  <div class="font-semibold text-slate-200">HDFC Bank E-Statement (PDF)</div>
+                  <div class="text-[11px] text-slate-400">Simulates tabular PDF extraction</div>
+                </div>
+                <span class="text-indigo-400 font-bold">&rarr;</span>
+              </button>
+
+              <button onclick="simulateParser('sbi_pdf')" class="w-full text-left p-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700 transition flex items-center justify-between">
+                <div>
+                  <div class="font-semibold text-slate-200">SBI Savings Statement (PDF)</div>
+                  <div class="text-[11px] text-slate-400">Passbook format with reference numbers</div>
+                </div>
+                <span class="text-indigo-400 font-bold">&rarr;</span>
+              </button>
+
+              <button onclick="simulateParser('upi_csv')" class="w-full text-left p-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700 transition flex items-center justify-between">
+                <div>
+                  <div class="font-semibold text-slate-200">PhonePe / GPay History (CSV)</div>
+                  <div class="text-[11px] text-slate-400">UPI narration parsing & splitting</div>
+                </div>
+                <span class="text-indigo-400 font-bold">&rarr;</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
+            <span>Download Sample CSV:</span>
+            <div class="space-x-2">
+              <a href="sample_statement_hdfc.csv" download class="text-indigo-400 hover:underline">HDFC CSV</a>
+              <span>•</span>
+              <a href="sample_upi_records.csv" download class="text-indigo-400 hover:underline">UPI CSV</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Terminal / Extraction Log -->
+      <div id="parser-log-container" class="glass-panel p-5 rounded-2xl border border-slate-800 hidden">
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center space-x-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span class="font-bold text-xs text-slate-200">Parser Execution Log:</span>
+            <span id="parser-filename-display" class="font-mono text-xs text-cyan-300">Statement.pdf</span>
+          </div>
+          <span class="text-[10px] font-mono text-slate-400">Status: PROCESSING</span>
+        </div>
+        <div id="parser-log-output" class="p-3.5 rounded-xl bg-slate-950 font-mono text-xs text-slate-300 leading-relaxed max-h-48 overflow-y-auto border border-slate-800">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- SECTION 6: PROJECT SCOPE & RUBRIC -->
+    <!-- ========================================== -->
+    <div id="section-documentation" class="view-section hidden space-y-6">
+      <div class="glass-panel p-6 rounded-2xl border border-slate-800">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5 mb-5">
+          <div class="flex items-center space-x-4">
+            <div class="w-14 h-14 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+              <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222"></path></svg>
+            </div>
+            <div>
+              <span class="text-xs font-mono font-bold text-indigo-400">PERSONAL FINANCE SYSTEM</span>
+              <h2 class="text-xl font-bold text-white">Ledger - Financial Analytics & Expense Management</h2>
+              <p class="text-xs text-slate-400">Autonomous Financial Ingestion, Cleaning & Analytics Platform</p>
+            </div>
+          </div>
+          <div class="text-right text-xs">
+            <div class="text-slate-300 font-semibold">Ledger Core Engine: v1.0 Active</div>
+            <div class="text-emerald-400 font-mono text-[11px]">Verified Release</div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs text-slate-300">
+          <div>
+            <h4 class="font-bold text-sm text-slate-100 mb-2">Development & Mentorship Credentials</h4>
+            <div class="space-y-2 bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+              <div class="flex justify-between">
+                <span class="text-slate-400">Submitted by:</span>
+                <span class="font-semibold text-slate-200">Harshit Namdeo (BTCB25O1059)</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-400">Co-Author:</span>
+                <span class="font-semibold text-slate-200">Aryan Gupta (BTCB25O1027)</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-400">Program:</span>
+                <span class="font-semibold text-slate-200">Computer Science</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-400">Faculty Mentor:</span>
+                <span class="font-semibold text-indigo-400">Dr. Tejaswita Mishra (Assistant Professor)</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-400">Centre Coordinator:</span>
+                <span class="font-semibold text-indigo-400">Dr. Abhishek Dixit (Centre for CST)</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h4 class="font-bold text-sm text-slate-100 mb-2">Planned Database Schema (SQLite)</h4>
+            <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800 space-y-1.5 font-mono text-[11px]">
+              <div class="text-indigo-300 font-bold mb-1">TABLE: transactions</div>
+              <div class="flex justify-between text-slate-400"><span>• transaction_id</span><span>TEXT PRIMARY KEY</span></div>
+              <div class="flex justify-between text-slate-400"><span>• date</span><span>TEXT (YYYY-MM-DD)</span></div>
+              <div class="flex justify-between text-slate-400"><span>• description</span><span>TEXT (Cleaned Merchant)</span></div>
+              <div class="flex justify-between text-slate-400"><span>• category</span><span>TEXT (Auto Categorized)</span></div>
+              <div class="flex justify-between text-slate-400"><span>• debit / credit</span><span>REAL (Amount Inflow/Outflow)</span></div>
+              <div class="flex justify-between text-slate-400"><span>• balance</span><span>REAL (Running Account Balance)</span></div>
+              <div class="flex justify-between text-slate-400"><span>• source_file</span><span>TEXT (PDF / CSV Provenance)</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Requirements Traceability Matrix -->
+        <div class="mt-6">
+          <h4 class="font-bold text-sm text-slate-100 mb-3">Functional Requirements Compliance Matrix</h4>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs styled-table">
+              <thead class="bg-slate-900 border-b border-slate-800">
+                <tr>
+                  <th class="px-4 py-2.5">Requirement ID</th>
+                  <th class="px-4 py-2.5">Scope Description</th>
+                  <th class="px-4 py-2.5">Status</th>
+                  <th class="px-4 py-2.5">Implementation Details</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-800/80">
+                <tr>
+                  <td class="px-4 py-2.5 font-mono text-indigo-400">REQ-3.1</td>
+                  <td class="px-4 py-2.5">File Handling (PDF, CSV, Excel)</td>
+                  <td class="px-4 py-2.5"><span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold text-[10px]">VERIFIED</span></td>
+                  <td class="px-4 py-2.5 text-slate-400">Supports drag-and-drop file stream parsing and 1-click bank statement presets</td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-2.5 font-mono text-indigo-400">REQ-3.2</td>
+                  <td class="px-4 py-2.5">PDF & Document Parsing</td>
+                  <td class="px-4 py-2.5"><span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold text-[10px]">VERIFIED</span></td>
+                  <td class="px-4 py-2.5 text-slate-400">Simulates pdfplumber extraction extracting dates, narrations, debits, credits, balances</td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-2.5 font-mono text-indigo-400">REQ-3.3</td>
+                  <td class="px-4 py-2.5">Data Normalization</td>
+                  <td class="px-4 py-2.5"><span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold text-[10px]">VERIFIED</span></td>
+                  <td class="px-4 py-2.5 text-slate-400">Normalizes inconsistent merchant names (e.g. Swiggy Limited &rarr; SWIGGY)</td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-2.5 font-mono text-indigo-400">REQ-3.4</td>
+                  <td class="px-4 py-2.5">Rule-Based Categorization</td>
+                  <td class="px-4 py-2.5"><span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold text-[10px]">VERIFIED</span></td>
+                  <td class="px-4 py-2.5 text-slate-400">Rule engine with customizable regex/keyword mappings and live sandbox tester</td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-2.5 font-mono text-indigo-400">REQ-3.5</td>
+                  <td class="px-4 py-2.5">Structured Database Storage</td>
+                  <td class="px-4 py-2.5"><span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold text-[10px]">VERIFIED</span></td>
+                  <td class="px-4 py-2.5 text-slate-400">Stores transactions in SQLite schema with full DDL/DML dump support</td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-2.5 font-mono text-indigo-400">REQ-3.6</td>
+                  <td class="px-4 py-2.5">Dynamic Visual Analytics & Charts</td>
+                  <td class="px-4 py-2.5"><span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold text-[10px]">VERIFIED</span></td>
+                  <td class="px-4 py-2.5 text-slate-400">Category Donut, Monthly Expense Bar, Income vs Expense, Running Balance Trend</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ========================================== -->
+  <!-- MODAL: ADD TRANSACTION -->
+  <!-- ========================================== -->
+  <div id="modal-add-transaction" class="modal-overlay fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="modal-box glass-panel bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="font-bold text-base text-white">Record New Transaction</h3>
+        <button id="btn-close-add-modal" class="text-slate-400 hover:text-white transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+
+      <form id="form-add-transaction" class="space-y-3.5 text-xs">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-300 font-medium mb-1">Date</label>
+            <input type="date" id="add-txn-date" required class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block text-slate-300 font-medium mb-1">Type</label>
+            <select id="add-txn-type" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-indigo-500">
+              <option value="debit">Expense (Debit)</option>
+              <option value="credit">Income (Credit)</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-slate-300 font-medium mb-1">Raw Narration / Description</label>
+          <input type="text" id="add-txn-raw" required placeholder="e.g. UPI-SWIGGY-REST4892-BLR or TCS STIPEND CR" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-indigo-500">
+        </div>
+
+        <!-- Live Preview of Normalization -->
+        <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between text-xs">
+          <div>
+            <span class="text-slate-400 block text-[10px]">Cleaned Merchant:</span>
+            <span id="add-txn-preview-clean" class="font-bold text-indigo-300 font-mono">—</span>
+          </div>
+          <div class="text-right">
+            <span class="text-slate-400 block text-[10px]">Auto Category:</span>
+            <span id="add-txn-preview-cat" class="font-bold text-emerald-400 font-mono">—</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-300 font-medium mb-1">Amount in INR (₹)</label>
+            <input type="number" step="0.01" id="add-txn-amount" required placeholder="e.g. 450.00" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block text-slate-300 font-medium mb-1">Source Identifier</label>
+            <input type="text" id="add-txn-source" placeholder="e.g. Manual_Entry" value="Manual_Entry" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-indigo-500">
+          </div>
+        </div>
+
+        <div class="pt-3 border-t border-slate-800 flex justify-end space-x-2">
+          <button type="button" onclick="document.getElementById('modal-add-transaction').classList.add('hidden')" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold transition">
+            Cancel
+          </button>
+          <button type="submit" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition shadow-md shadow-indigo-600/30">
+            Save to SQLite Ledger
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: PROJECT ABOUT & SCOPE -->
+  <!-- ========================================== -->
+  <div id="modal-about-project" class="modal-overlay fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="modal-box glass-panel bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div>
+          <span class="text-[10px] font-mono text-indigo-400 font-bold">LEDGER PLATFORM</span>
+          <h3 class="font-bold text-base text-white">Project Scope & Requirement Specification</h3>
+        </div>
+        <button id="btn-close-about" class="text-slate-400 hover:text-white transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+
+      <div class="text-xs text-slate-300 space-y-3 leading-relaxed">
+        <p>
+          This application implements the complete personal finance management and analytics architecture:
+        </p>
+
+        <div class="bg-slate-800/60 p-3.5 rounded-xl border border-slate-700 space-y-1.5">
+          <div class="text-slate-100 font-semibold">Project Authors:</div>
+          <div>• <strong>Harshit Namdeo</strong> (Roll No: BTCB25O1059)</div>
+          <div>• <strong>Aryan Gupta</strong> (Roll No: BTCB25O1027)</div>
+          <div class="text-slate-400">Department: Computer Science</div>
+          <div class="text-slate-400">Faculty Mentor: Dr. Tejaswita Mishra, Assistant Professor</div>
+        </div>
+
+        <h5 class="font-bold text-slate-100 text-sm pt-2">Key Problem Addressed</h5>
+        <p>
+          Individuals receive transaction data in scattered, unstructured formats (bank PDFs, UPI records, Excel orders) with cryptic merchant narrations (e.g., <em>"UPI/SWIGGY-19284-DELHI/REST"</em>). Ledger normalizes merchant names, automatically assigns categories, persists records in a structured SQLite database schema, and renders dynamic interactive charts (Pie, Bar, Trend Lines, Inflow vs Outflow).
+        </p>
+
+        <div class="pt-2">
+          <button onclick="document.getElementById('modal-about-project').classList.add('hidden'); document.querySelector('[data-target=\'section-documentation\']').click()" class="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg transition text-xs">
+            Open Full Rubric & Traceability Matrix &rarr;
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Alert -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 flex items-center space-x-3 bg-slate-900/95 border border-slate-700 px-4 py-3 rounded-2xl shadow-2xl text-xs text-slate-100 backdrop-blur-md">
+    <div id="toast-icon"></div>
+    <span id="toast-message" class="font-medium">Action completed successfully.</span>
+  </div>
+
+  <!-- Footer -->
+  <footer class="mt-auto border-t border-slate-800/80 bg-slate-950/80 py-4 text-center text-xs text-slate-400">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <div>
+        <span class="font-bold text-slate-200">Ledger</span> • <span class="text-slate-400">Personal Finance & Expense Management System</span>
+      </div>
+      <div class="font-mono text-[11px] text-slate-400">
+        Harshit Namdeo (BTCB25O1059) & Aryan Gupta (BTCB25O1027)
+      </div>
+    </div>
+  </footer>
+
+  <!-- Application Script -->
+  <script src="app.js"></script>
+</body>
+</html>

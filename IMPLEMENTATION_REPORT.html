@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Implementation & Development Report - Ledger</title>
+  <style>
+    @media print {
+      body { font-size: 11pt; color: #111; }
+      .no-print { display: none; }
+      .page-break { page-break-before: always; }
+      a { color: #111; text-decoration: none; }
+    }
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+      line-height: 1.6;
+      color: #1e293b;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      background: #f8fafc;
+    }
+    .paper {
+      background: #ffffff;
+      padding: 50px 60px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      border: 1px solid #e2e8f0;
+    }
+    h1 {
+      font-size: 26pt;
+      color: #0f172a;
+      margin-bottom: 4px;
+      font-weight: 800;
+      border-bottom: 3px solid #4f46e5;
+      padding-bottom: 12px;
+    }
+    h2 {
+      font-size: 17pt;
+      color: #1e293b;
+      margin-top: 32px;
+      margin-bottom: 12px;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 6px;
+    }
+    h3 {
+      font-size: 13pt;
+      color: #334155;
+      margin-top: 20px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 9999px;
+      font-size: 11pt;
+      font-weight: 600;
+      background: #e0e7ff;
+      color: #4338ca;
+      margin-bottom: 20px;
+    }
+    .meta-box {
+      background: #f1f5f9;
+      border-left: 4px solid #4f46e5;
+      padding: 16px 20px;
+      border-radius: 6px;
+      margin: 20px 0 30px 0;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      font-size: 11pt;
+    }
+    .meta-item strong {
+      color: #0f172a;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 10.5pt;
+    }
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 10px 14px;
+      text-align: left;
+    }
+    th {
+      background: #f8fafc;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    tr:nth-child(even) {
+      background: #f8fafc;
+    }
+    code {
+      font-family: 'Consolas', monospace;
+      background: #f1f5f9;
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #4f46e5;
+      font-size: 10pt;
+    }
+    pre {
+      background: #0f172a;
+      color: #f8fafc;
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-family: 'Consolas', monospace;
+      font-size: 9.5pt;
+      line-height: 1.45;
+    }
+    ul, ol {
+      padding-left: 24px;
+      margin: 12px 0;
+    }
+    li {
+      margin-bottom: 6px;
+    }
+    .highlight-card {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+      padding: 14px 18px;
+      border-radius: 8px;
+      font-weight: 600;
+      margin: 20px 0;
+    }
+    .print-btn {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #4f46e5;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+      font-size: 12pt;
+      transition: background 0.2s;
+    }
+    .print-btn:hover {
+      background: #4338ca;
+    }
+  </style>
+</head>
+<body>
+
+  <button class="print-btn no-print" onclick="window.print()">🖨️ Print to PDF</button>
+
+  <div class="paper">
+    <div class="badge">Milestone 2 Deliverable: Implementation / Development</div>
+    <h1>Implementation & Development Report</h1>
+    <h3 style="color:#64748b; margin-top: -4px;">Ledger: Personal Finance Analytics and Expense Management System</h3>
+
+    <div class="meta-box">
+      <div class="meta-item">
+        <strong>Authors:</strong><br>
+        • Harshit Namdeo (Roll No: <code>BTCB25O1059</code>)<br>
+        • Aryan Gupta (Roll No: <code>BTCB25O1027</code>)
+      </div>
+      <div class="meta-item">
+        <strong>Faculty Mentors:</strong><br>
+        • Dr. Tejaswita Mishra (Assistant Professor)<br>
+        • Dr. Abhishek Dixit (Coordinator)
+      </div>
+      <div class="meta-item">
+        <strong>Submission Deadline:</strong> September 25, 2026
+      </div>
+      <div class="meta-item">
+        <strong>Project Status:</strong> Implementation Complete (100%)
+      </div>
+    </div>
+
+    <h2>1. Executive Summary & Milestone Objective</h2>
+    <p>
+      The <strong>Ledger</strong> Personal Finance Analytics and Expense Management System converts the project's requirement analysis and architectural design into a fully functional, production-ready software system. The solution ingests fragmented and cryptic transaction streams (bank statement PDFs, UPI CSV exports, and e-commerce sheets), cleans and normalizes merchant narratives via a rule-based engine, stores records in an ACID-compliant local SQLite database, and presents multi-dimensional financial insights through responsive, dynamic Chart.js visualizations.
+    </p>
+
+    <h2>2. Deliverable 1: Source Code (Module-Wise Architecture)</h2>
+    <p>The codebase is constructed with strict modularity, clean separation of concerns, and automated tests:</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Module / File</th>
+          <th>Component</th>
+          <th>Primary Responsibilities</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>index.html</code></td>
+          <td>Front-End UI</td>
+          <td>Semantic HTML5 layout, metric KPI cards, chart grid, transaction ledger, sandbox interface.</td>
+        </tr>
+        <tr>
+          <td><code>app.js</code></td>
+          <td>Front-End Logic</td>
+          <td>Dynamic Chart.js rendering, 1-click sample data injector, live normalization sandbox, sorting & filtering.</td>
+        </tr>
+        <tr>
+          <td><code>styles.css</code></td>
+          <td>Styling</td>
+          <td>Modern glassmorphic dark theme, custom responsive tables, badges, animation keyframes.</td>
+        </tr>
+        <tr>
+          <td><code>cleaner.py</code></td>
+          <td>Back-End Engine</td>
+          <td>Regex and keyword normalization pipeline; cleans cryptic UPI narrations and classifies categories.</td>
+        </tr>
+        <tr>
+          <td><code>parser.py</code></td>
+          <td>Ingestion Engine</td>
+          <td>Multi-format statement ingestion; parses PDF (<code>pdfplumber</code>), Excel (<code>openpyxl</code>), and CSV (<code>pandas</code>).</td>
+        </tr>
+        <tr>
+          <td><code>database.py</code></td>
+          <td>Persistence Layer</td>
+          <td>SQLite manager (<code>finance.db</code>); handles CRUD, running balances, category totals, and monthly KPIs.</td>
+        </tr>
+        <tr>
+          <td><code>analytics.py</code></td>
+          <td>Visualization Engine</td>
+          <td>Generates 300 DPI Matplotlib charts (Donut, Grouped Bar, Trendline, Expenditure Breakdown) saved to <code>exports/</code>.</td>
+        </tr>
+        <tr>
+          <td><code>main.py</code></td>
+          <td>CLI Controller</td>
+          <td>Unified command-line orchestrator supporting <code>summary</code>, <code>parse</code>, <code>report</code>, and <code>serve</code> commands.</td>
+        </tr>
+        <tr>
+          <td><code>test_pipeline.py</code></td>
+          <td>Verification Suite</td>
+          <td>Automated regression tests covering parser, cleaner, database CRUD, and chart generation.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="page-break"></div>
+
+    <h2>3. Deliverable 2: Front-End and Back-End Integration</h2>
+    <p>The system establishes robust synchronization between data parsing and interactive visual analytics:</p>
+    <ul>
+      <li><strong>Dynamic Chart Visualizations (Chart.js):</strong>
+        <ul>
+          <li><strong>Category Spending Breakdown (Donut Chart):</strong> Proportional allocation across 9 essential categories.</li>
+          <li><strong>Monthly Inflow vs Outflow (Grouped Bar Chart):</strong> Side-by-side comparison of debit spend vs credit income.</li>
+          <li><strong>Cumulative Spend & Balance Trend (Multi-Line Chart):</strong> Real-time trajectory of cash reserves and expenditure velocity.</li>
+          <li><strong>Monthly Expense Distribution (Bar Chart):</strong> Aggregate debit sums grouped by calendar period.</li>
+          <li><strong>Top Category Ranking (Horizontal Bar Chart):</strong> Ranked expense prioritization.</li>
+        </ul>
+      </li>
+      <li><strong>Interactive Merchant Normalization Sandbox:</strong> Users can enter raw, messy bank statement narrations (e.g. <code>UPI/SWIGGY-REST4892-BLR</code>) and inspect live regex-cleaned merchant names (<code>SWIGGY</code>) and automated category classifications (<code>Food & Dining</code>).</li>
+      <li><strong>1-Click Sample Data Injector:</strong> Enables evaluators to instantaneously populate fresh financial records with a single click, triggering real-time chart animations, recalculation of financial KPIs, and balance updates.</li>
+      <li><strong>Multi-Format Data Portability:</strong> Filtered records can be exported directly to <strong>CSV</strong>, <strong>JSON</strong>, and complete <strong>SQLite SQL scripts</strong>.</li>
+    </ul>
+
+    <h2>4. Deliverable 3: Database Implementation (SQLite)</h2>
+    <p>The persistence layer is implemented in SQLite (<code>finance.db</code>) adhering to 3NF relational modeling:</p>
+    <pre><code>CREATE TABLE IF NOT EXISTS transactions (
+    transaction_id TEXT PRIMARY KEY,
+    date TEXT NOT NULL,
+    raw_description TEXT NOT NULL,
+    description TEXT NOT NULL,
+    category TEXT NOT NULL,
+    debit REAL DEFAULT 0.0,
+    credit REAL DEFAULT 0.0,
+    balance REAL NOT NULL,
+    source_file TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS categories (
+    category_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    category_name TEXT UNIQUE NOT NULL,
+    color_hex TEXT DEFAULT '#64748b'
+);
+
+CREATE TABLE IF NOT EXISTS normalization_rules (
+    rule_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    pattern TEXT NOT NULL,
+    pattern_type TEXT DEFAULT 'contains',
+    clean_merchant TEXT NOT NULL,
+    category_id INTEGER
+);</code></pre>
+
+    <h2>5. Deliverable 4: Version Control & Repository Structure</h2>
+    <p>The codebase is organized in a clean directory hierarchy with complete provenance:</p>
+    <pre><code>personal-finance-analytics/
+├── index.html                           # Front-end user interface
+├── app.js                               # Front-end charts & data logic
+├── styles.css                           # UI styling
+├── cleaner.py                           # Rule-based normalization
+├── parser.py                            # PDF / Excel / CSV statement parser
+├── database.py                          # SQLite database interface
+├── analytics.py                         # Matplotlib analytics engine
+├── main.py                              # CLI controller
+├── serve.py                             # Development server
+├── test_pipeline.py                     # Unit & integration tests
+├── schema.sql                           # Database DDL script
+├── finance.db                           # Local SQLite database file
+├── sample_data.json                     # JSON dataset (54 records)
+├── sample_bank_statement.pdf            # Sample PDF bank statement
+├── sample_statement_hdfc.csv            # Sample CSV statement
+├── sample_upi_records.csv               # Sample UPI transaction log
+├── exports/                             # Publication-quality charts (300 DPI)
+├── README.md                            # Comprehensive setup & usage guide
+└── Ledger_Implementation_Deliverables.zip # Complete source code archive</code></pre>
+
+    <h2>6. Validation & Testing Verification</h2>
+    <div class="highlight-card">
+      ✅ Automated Test Suite Passed: 8 / 8 Tests (100% Success Rate)
+    </div>
+    <ul>
+      <li><code>test_cleaner_swiggy_food</code>: Verified rule mapping for food delivery narrations.</li>
+      <li><code>test_cleaner_amazon_shopping</code>: Verified rule mapping for e-commerce transactions.</li>
+      <li><code>test_cleaner_stipend_income</code>: Verified credit income categorization.</li>
+      <li><code>test_cleaner_mits_education</code>: Verified educational fee classification.</li>
+      <li><code>test_database_crud</code>: Verified SQLite insertion, queries, running balance math, and deletion.</li>
+      <li><code>test_pdf_parsing</code>: Verified tabular extraction from PDF bank statements via <code>pdfplumber</code>.</li>
+      <li><code>test_csv_parsing</code>: Verified multi-column CSV ingestion via <code>pandas</code>.</li>
+      <li><code>test_matplotlib_report_generation</code>: Verified generation of 4 300-DPI publication charts.</li>
+    </ul>
+  </div>
+</body>
+</html>
