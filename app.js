@@ -1602,11 +1602,16 @@ function simulateEncryptedPDF() {
 
   const simulatedFilename = "HDFC_Statement_Sep2026_Protected.pdf";
 
-  if (logContainer) logContainer.classList.remove("hidden");
+  showToast("Encrypted Statement Detected. Please enter password to unlock.", "info");
+
+  if (logContainer) {
+    logContainer.classList.remove("hidden");
+    logContainer.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
   if (fileNameDisplay) fileNameDisplay.textContent = `${simulatedFilename} (38.4 KB)`;
   if (logOutput) {
-    logOutput.innerHTML = `<span class="text-indigo-400">[1/4] Reading file stream: ${simulatedFilename}...</span><br>`;
-    logOutput.innerHTML += `<span class="text-amber-300 font-semibold">[!] PDF is Password-Protected (Standard 128-bit AES Encryption). Prompting for password...</span><br>`;
+    logOutput.innerHTML = `<span class="text-indigo-400 font-mono">[1/4] Reading file stream: ${simulatedFilename}...</span><br>`;
+    logOutput.innerHTML += `<span class="text-amber-300 font-mono font-semibold">[!] PDF is Password-Protected (Standard 128-bit AES Encryption). Prompting for password...</span><br>`;
   }
 
   if (filenameDisp) filenameDisp.textContent = simulatedFilename;
@@ -1625,7 +1630,7 @@ function simulateEncryptedPDF() {
 
     if (enteredPassword.toUpperCase() === "WRONG") {
       if (logOutput) {
-        logOutput.innerHTML += `<span class="text-rose-400">[!] Authentication failed: Invalid statement password.</span><br>`;
+        logOutput.innerHTML += `<span class="text-rose-400 font-mono">[!] Authentication failed: Invalid statement password.</span><br>`;
       }
       showToast("Authentication Failed: Incorrect statement password", "error");
       setTimeout(() => simulateEncryptedPDF(), 800);
@@ -1634,8 +1639,8 @@ function simulateEncryptedPDF() {
 
     setTimeout(() => {
       if (logOutput) {
-        logOutput.innerHTML += `<span class="text-emerald-400 font-semibold">[2/4] Decryption Key Accepted! PDF stream unlocked in volatile memory.</span><br>`;
-        logOutput.innerHTML += `<span class="text-cyan-400">[3/4] Extracting tables & passing through Rule Normalization Engine (cleaner.py)...</span><br>`;
+        logOutput.innerHTML += `<span class="text-emerald-400 font-mono font-semibold">[2/4] Decryption Key Accepted! PDF stream unlocked in volatile memory.</span><br>`;
+        logOutput.innerHTML += `<span class="text-cyan-400 font-mono">[3/4] Extracting tables & passing through Rule Normalization Engine (cleaner.py)...</span><br>`;
       }
 
       const sampleUnlockedRecords = [
@@ -1712,8 +1717,12 @@ function simulateParser(type) {
     ];
   }
 
-  if (logContainer) logContainer.classList.remove("hidden");
+  if (logContainer) {
+    logContainer.classList.remove("hidden");
+    logContainer.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
   if (fileNameDisplay) fileNameDisplay.textContent = fileName;
+  showToast(`Parsing ${fileName}...`, "info");
   if (logOutput) {
     logOutput.innerHTML = `
       <span class="text-indigo-400 font-mono">[1/4] pdfplumber / openpyxl: Initializing document stream for ${fileName}...</span><br>
@@ -2019,4 +2028,12 @@ function clearAllTransactions() {
     showToast("Cleared all transactions. Click '+ Add Sample Data' to reload!", "info");
   }
 }
+
+// Explicit window bindings for inline HTML handlers
+window.simulateParser = simulateParser;
+window.simulateEncryptedPDF = simulateEncryptedPDF;
+window.submitPasswordUnlock = submitPasswordUnlock;
+window.addSampleTransactions = addSampleTransactions;
+window.clearAllTransactions = clearAllTransactions;
+
 
