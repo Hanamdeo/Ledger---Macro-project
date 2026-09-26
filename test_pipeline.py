@@ -40,8 +40,8 @@ class TestPersonalFinanceSystem(unittest.TestCase):
         self.assertEqual(result["category"], "Income")
 
     def test_cleaner_mits_education(self):
-        result = self.cleaner.clean_and_categorize("UPI/MITS-GWALIOR-EXAM-FEE/GWL")
-        self.assertEqual(result["clean_merchant"], "MITS GWALIOR")
+        result = self.cleaner.clean_and_categorize("COLLEGE TUITION FEE PAYMENT")
+        self.assertEqual(result["clean_merchant"], "COLLEGE EDUCATION")
         self.assertEqual(result["category"], "Education & Learning")
 
     def test_database_crud(self):
@@ -72,6 +72,21 @@ class TestPersonalFinanceSystem(unittest.TestCase):
         pdf_path = os.path.join(os.path.dirname(__file__), "sample_bank_statement.pdf")
         if os.path.exists(pdf_path):
             records = self.parser.parse_pdf(pdf_path)
+            self.assertGreater(len(records), 0)
+            self.assertEqual(records[0]["description"], "SWIGGY")
+
+    def test_encrypted_pdf_handling(self):
+        from parser import PasswordRequiredError, InvalidPasswordError
+        enc_path = os.path.join(os.path.dirname(__file__), "sample_encrypted_hdfc.pdf")
+        if os.path.exists(enc_path):
+            # Must raise PasswordRequiredError when no password
+            with self.assertRaises(PasswordRequiredError):
+                self.parser.parse_file(enc_path)
+            # Must raise InvalidPasswordError when wrong password
+            with self.assertRaises(InvalidPasswordError):
+                self.parser.parse_file(enc_path, password="WRONG_PASSWORD")
+            # Must succeed when correct password provided
+            records = self.parser.parse_file(enc_path, password="HDFC1048")
             self.assertGreater(len(records), 0)
             self.assertEqual(records[0]["description"], "SWIGGY")
 

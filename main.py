@@ -10,9 +10,10 @@ Mentor: Dr. Tejaswita Mishra, Dr. Abhishek Dixit
 import sys
 import os
 import argparse
+import getpass
 from cleaner import MerchantCleaner
 from database import DatabaseManager
-from parser import StatementParser
+from parser import StatementParser, PasswordRequiredError, InvalidPasswordError
 from analytics import ReportGenerator
 import serve
 
@@ -55,9 +56,27 @@ def cmd_parse(args):
     cleaner = MerchantCleaner()
     db = DatabaseManager()
     parser = StatementParser(cleaner=cleaner, db=db)
+    password = getattr(args, "password", None)
 
-    records = parser.parse_file(file_path)
-    print(f"[+] Successfully extracted {len(records)} raw transactions.")
+    try:
+        records = parser.parse_file(file_path, password=password)
+    except PasswordRequiredError:
+        print(f"\n[!] Encrypted File Detected: '{os.path.basename(file_path)}' is password-protected.")
+        if sys.stdin.isatty():
+            password = getpass.getpass("    Please enter PDF statement password: ")
+            try:
+                records = parser.parse_file(file_path, password=password)
+            except InvalidPasswordError:
+                print("\n[!] Authentication Failed: Incorrect statement password.")
+                sys.exit(1)
+        else:
+            print("[!] Please provide password using '--password <pass>' or '-p <pass>' flag.")
+            sys.exit(1)
+    except InvalidPasswordError as e:
+        print(f"\n[!] Authentication Failed: {e}")
+        sys.exit(1)
+
+    print(f"[+] Successfully unlocked and extracted {len(records)} transactions.")
     
     saved_count = db.insert_transactions_batch(records)
     print(f"[+] Normalized and committed {saved_count} transactions to SQLite database (finance.db)!")
@@ -82,7 +101,7 @@ def cmd_serve(args):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Personal Finance Analytics & Expense Management System (MITS Gwalior)"
+        description="Personal Finance Analytics & Expense Management System (Ledger)"
     )
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
@@ -93,6 +112,7 @@ def main():
     # parse
     p_parse = subparsers.add_parser("parse", help="Parse PDF/CSV/Excel statement and store in SQLite")
     p_parse.add_argument("file", help="Path to statement file (.pdf, .csv, .xlsx)")
+    p_parse.add_argument("--password", "-p", default=None, help="Password for encrypted PDF statement")
     p_parse.set_defaults(func=cmd_parse)
 
     # report

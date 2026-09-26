@@ -23,6 +23,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         # Clean logging
         sys.stderr.write(f"[{self.log_date_time_string()}] {format % args}\n")
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 def run():
     os.chdir(DIRECTORY)
     port = PORT
@@ -34,9 +37,12 @@ def run():
                 print(" LEDGER - PERSONAL FINANCE ANALYTICS & EXPENSE MANAGEMENT SYSTEM")
                 print(" Developed by: Harshit Namdeo & Aryan Gupta")
                 print("=" * 70)
-                print(f"\n🚀 Server running at: {url}")
-                print("💡 Press Ctrl+C in terminal to stop server.\n")
-                webbrowser.open(url)
+                print(f"\n[+] Server running at: {url}")
+                print("[*] Press Ctrl+C in terminal to stop server.\n")
+                try:
+                    webbrowser.open(url)
+                except Exception:
+                    pass
                 httpd.serve_forever()
         except OSError:
             port += 1

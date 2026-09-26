@@ -9,11 +9,23 @@ import os
 import re
 import csv
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import pandas as pd
 import pdfplumber
+try:
+    import pypdf
+except ImportError:
+    pypdf = None
 from cleaner import MerchantCleaner
 from database import DatabaseManager
+
+class PasswordRequiredError(Exception):
+    """Raised when an encrypted PDF is provided without a password."""
+    pass
+
+class InvalidPasswordError(Exception):
+    """Raised when an incorrect password is provided for an encrypted PDF."""
+    pass
 
 class StatementParser:
     """Parses bank statements from PDF, Excel, and CSV files, then normalizes & categorizes."""
@@ -22,11 +34,28 @@ class StatementParser:
         self.cleaner = cleaner or MerchantCleaner()
         self.db = db or DatabaseManager()
 
-    def parse_file(self, file_path: str) -> List[Dict[str, Any]]:
-        """Dispatcher based on file extension."""
+    def is_pdf_encrypted(self, file_path: str) -> bool:
+        """Checks if a PDF file is encrypted/password-protected."""
+        if not file_path.lower().endswith(".pdf"):
+            return False
+        if pypdf:
+            try:
+                reader = pypdf.PdfReader(file_path)
+                return reader.is_encrypted
+            except Exception:
+                pass
+        try:
+            with pdfplumber.open(file_path) as pdf:
+                _ = len(pdf.pages)
+            return False
+        except Exception:
+            return True
+
+    def parse_file(self, file_path: str, password: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Dispatcher based on file extension with optional PDF password."""
         ext = os.path.splitext(file_path)[1].lower()
         if ext == ".pdf":
-            return self.parse_pdf(file_path)
+            return self.parse_pdf(file_path, password=password)
         elif ext in [".xlsx", ".xls"]:
             return self.parse_excel(file_path)
         elif ext in [".csv", ".txt"]:
@@ -123,14 +152,34 @@ class StatementParser:
             parsed_records.append(record)
         return parsed_records
 
-    def parse_pdf(self, file_path: str) -> List[Dict[str, Any]]:
-        """Parses bank statement PDF using pdfplumber."""
+    def parse_pdf(self, file_path: str, password: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Parses bank statement PDF using pdfplumber with optional password decryption."""
         parsed_records = []
         filename = os.path.basename(file_path)
 
-        with pdfplumber.open(file_path) as pdf:
-            for page_idx, page in enumerate(pdf.pages):
-                tables = page.extract_tables()
+        # Check encryption using pypdf if available
+        if pypdf:
+            try:
+                reader = pypdf.PdfReader(file_path)
+                if reader.is_encrypted:
+                    if not password:
+                        raise PasswordRequiredError(
+                            f"Bank statement '{filename}' is password-protected. Please supply the statement password."
+                        )
+                    decrypt_res = reader.decrypt(password)
+                    if decrypt_res == 0:
+                        raise InvalidPasswordError(
+                            f"Incorrect password provided for bank statement '{filename}'."
+                        )
+            except (PasswordRequiredError, InvalidPasswordError):
+                raise
+            except Exception:
+                pass
+
+        try:
+            with pdfplumber.open(file_path, password=password) as pdf:
+                for page_idx, page in enumerate(pdf.pages):
+                    tables = page.extract_tables()
                 if tables:
                     for table in tables:
                         if not table or len(table) < 2:
@@ -204,6 +253,16 @@ class StatementParser:
                                 "balance": balance,
                                 "source_file": filename
                             })
+        except (PasswordRequiredError, InvalidPasswordError):
+            raise
+        except Exception as e:
+            err_str = str(e).lower() + " " + type(e).__name__.lower()
+            if "password" in err_str or "encrypt" in err_str:
+                if not password:
+                    raise PasswordRequiredError(f"PDF statement '{filename}' is password-protected. Please provide the statement password.")
+                else:
+                    raise InvalidPasswordError(f"Incorrect password provided for '{filename}'.")
+            raise e
 
         return parsed_records
 
