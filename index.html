@@ -115,6 +115,11 @@
             <span>Add Transaction</span>
           </button>
 
+          <button onclick="promptHardReset()" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 transition flex items-center space-x-1.5 shadow-sm" title="Hard Reset: Wipe all data to 0 to test your own bank statement">
+            <span class="text-rose-400">🗑️</span>
+            <span>Reset to 0</span>
+          </button>
+
           <div class="relative group">
             <button class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center space-x-1.5">
               <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
@@ -528,6 +533,9 @@
           <button onclick="document.getElementById('btn-open-add-modal').click()" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center space-x-1">
             <span>+ New Record</span>
           </button>
+          <button onclick="promptHardReset()" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 transition flex items-center space-x-1" title="Reset all records to 0">
+            <span>🗑️ Reset to 0</span>
+          </button>
         </div>
       </div>
 
@@ -723,6 +731,22 @@
             Functional Requirements 3.1 & 3.2: Reading PDF bank statements and Excel/CSV files with automated extraction
           </p>
         </div>
+      </div>
+      <!-- Clean Slate Banner for Self-Testing -->
+      <div class="glass-panel p-3.5 rounded-xl border border-slate-800 bg-slate-900/60 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div class="flex items-center space-x-2.5 text-xs text-slate-300">
+          <div class="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center font-bold text-xs shrink-0">
+            0
+          </div>
+          <div>
+            <span class="font-semibold text-slate-100">Testing with your own bank statement?</span>
+            <span class="text-slate-400 block sm:inline"> You can reset all sample transactions to 0 with 1-click so your personal statement starts on a clean slate.</span>
+          </div>
+        </div>
+        <button onclick="promptHardReset()" class="px-3.5 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/40 text-rose-300 font-semibold text-xs transition flex items-center space-x-1.5 whitespace-nowrap">
+          <span>🗑️</span>
+          <span>Reset All Data to 0</span>
+        </button>
       </div>
 
       <!-- Drag & Drop Zone -->
@@ -1115,6 +1139,48 @@
     </div>
   </div>
 
+  <!-- ========================================== -->
+  <!-- MODAL: HARD RESET CONFIRMATION -->
+  <!-- ========================================== -->
+  <div id="modal-hard-reset" class="modal-overlay fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="modal-box glass-panel bg-slate-900 border border-rose-500/40 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
+      <div class="flex items-center space-x-3 border-b border-slate-800 pb-3">
+        <div class="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 flex items-center justify-center text-lg">
+          🗑️
+        </div>
+        <div>
+          <h3 class="font-bold text-base text-white">Hard Reset Ledger to 0</h3>
+          <p class="text-xs text-rose-400/80">Wipe all transactions to test your own statement</p>
+        </div>
+      </div>
+
+      <div class="text-xs text-slate-300 space-y-2.5 leading-relaxed">
+        <p>
+          Are you sure you want to completely reset all data to <strong class="text-white">0</strong>?
+        </p>
+        <ul class="list-disc list-inside space-y-1 text-slate-400 text-[11px] pl-1">
+          <li>All current transactions will be cleared from memory & storage.</li>
+          <li>Account Balance, Income, Expense, and Savings Rate will reset to <strong class="text-slate-200">Rs. 0.00</strong>.</li>
+          <li>All 5 charts will reset to empty state, ready for your new statement.</li>
+        </ul>
+        <div class="p-2.5 rounded-xl bg-indigo-950/40 border border-indigo-500/30 text-[11px] text-indigo-300 flex items-start space-x-2">
+          <span>💡</span>
+          <span><strong>Easy Recovery:</strong> You can restore the full 54 sample records anytime with 1 click using the <em>"+ Add Sample Data"</em> menu.</span>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end space-x-3 pt-2">
+        <button type="button" onclick="document.getElementById('modal-hard-reset').classList.add('hidden')" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 transition">
+          Cancel
+        </button>
+        <button type="button" onclick="executeHardReset()" class="px-5 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-xs font-semibold text-white shadow-lg shadow-rose-600/30 transition flex items-center space-x-1.5">
+          <span>Confirm & Reset to 0</span>
+          <span>&rarr;</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notification Alert -->
   <div id="toast" class="fixed bottom-6 right-6 z-50 flex items-center space-x-3 bg-slate-900/95 border border-slate-700 px-4 py-3 rounded-2xl shadow-2xl text-xs text-slate-100 backdrop-blur-md">
     <div id="toast-icon"></div>
@@ -1134,6 +1200,6 @@
   </footer>
 
   <!-- Application Script -->
-  <script src="app.js?v=3.0"></script>
+  <script src="app.js?v=4.0"></script>
 </body>
 </html>

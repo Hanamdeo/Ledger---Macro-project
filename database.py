@@ -166,3 +166,11 @@ class DatabaseManager:
                 ORDER BY month ASC
             """).fetchall()
             return [dict(r) for r in rows]
+
+    def clear_all_transactions(self) -> int:
+        """Wipes all transactions from the SQLite database, resetting it to 0."""
+        with self.get_connection() as conn:
+            cursor = conn.execute("DELETE FROM transactions")
+            conn.commit()
+            return cursor.rowcount
+

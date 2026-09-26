@@ -95,6 +95,13 @@ def cmd_report(args):
     for name, path in charts.items():
         print(f"  - {name}: {os.path.basename(path)} ({os.path.getsize(path)/1024:.1f} KB)")
 
+def cmd_reset(args):
+    print_banner()
+    db = DatabaseManager()
+    count = db.clear_all_transactions()
+    print(f"\n[+] Hard Reset Complete: Removed {count} transactions from SQLite (finance.db).")
+    print("[+] Database is now completely clean at 0 records, ready for your own bank statement.\n")
+
 def cmd_serve(args):
     print_banner()
     serve.run()
@@ -114,6 +121,10 @@ def main():
     p_parse.add_argument("file", help="Path to statement file (.pdf, .csv, .xlsx)")
     p_parse.add_argument("--password", "-p", default=None, help="Password for encrypted PDF statement")
     p_parse.set_defaults(func=cmd_parse)
+
+    # reset
+    p_rst = subparsers.add_parser("reset", help="Hard reset SQLite database to 0 (wipe all transactions)")
+    p_rst.set_defaults(func=cmd_reset)
 
     # report
     p_rep = subparsers.add_parser("report", help="Generate Matplotlib charts for project report")

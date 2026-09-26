@@ -576,9 +576,15 @@ function renderCategoryDonutChart(transactions) {
     }
   });
 
-  const labels = Object.keys(categoryTotals);
-  const data = Object.values(categoryTotals);
-  const bgColors = labels.map(l => CATEGORY_COLORS[l] || "#94a3b8");
+  let labels = Object.keys(categoryTotals);
+  let data = Object.values(categoryTotals);
+  let bgColors = labels.map(l => CATEGORY_COLORS[l] || "#94a3b8");
+
+  if (labels.length === 0) {
+    labels = ["No Expenses (Rs. 0.00)"];
+    data = [1];
+    bgColors = ["#1e293b"];
+  }
 
   if (state.charts.categoryDonut) {
     state.charts.categoryDonut.destroy();
@@ -650,11 +656,16 @@ function renderMonthlyBarChart(transactions) {
   });
 
   const sortedMonths = Object.keys(monthMap).sort();
-  const monthLabels = sortedMonths.map(m => {
+  let monthLabels = sortedMonths.map(m => {
     const d = new Date(m + "-01");
     return d.toLocaleDateString("en-IN", { month: "short", year: "numeric" });
   });
-  const expenseData = sortedMonths.map(m => monthMap[m].expense);
+  let expenseData = sortedMonths.map(m => monthMap[m].expense);
+
+  if (sortedMonths.length === 0) {
+    monthLabels = ["Awaiting Statement"];
+    expenseData = [0];
+  }
 
   if (state.charts.monthlyExpenseBar) {
     state.charts.monthlyExpenseBar.destroy();
@@ -702,14 +713,21 @@ function renderIncomeVsExpenseChart(transactions) {
   });
 
   const sortedMonths = Object.keys(monthMap).sort();
-  const monthLabels = sortedMonths.map(m => {
+  let monthLabels = sortedMonths.map(m => {
     const d = new Date(m + "-01");
     return d.toLocaleDateString("en-IN", { month: "short", year: "numeric" });
   });
 
-  const incomeData = sortedMonths.map(m => monthMap[m].income);
-  const expenseData = sortedMonths.map(m => monthMap[m].expense);
-  const netSavingsData = sortedMonths.map(m => monthMap[m].income - monthMap[m].expense);
+  let incomeData = sortedMonths.map(m => monthMap[m].income);
+  let expenseData = sortedMonths.map(m => monthMap[m].expense);
+  let netSavingsData = sortedMonths.map(m => monthMap[m].income - monthMap[m].expense);
+
+  if (sortedMonths.length === 0) {
+    monthLabels = ["Awaiting Statement"];
+    incomeData = [0];
+    expenseData = [0];
+    netSavingsData = [0];
+  }
 
   if (state.charts.incomeVsExpenseBar) {
     state.charts.incomeVsExpenseBar.destroy();
@@ -770,15 +788,21 @@ function renderTrendLineChart(transactions) {
 
   // Sort chronological
   const sortedTxns = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
-  const dates = sortedTxns.map(t => formatDate(t.date));
-  const balances = sortedTxns.map(t => t.balance);
+  let dates = sortedTxns.map(t => formatDate(t.date));
+  let balances = sortedTxns.map(t => t.balance);
 
   // Cumulative expense line
   let cumExpense = 0;
-  const cumulativeExpenses = sortedTxns.map(t => {
+  let cumulativeExpenses = sortedTxns.map(t => {
     cumExpense += Number(t.debit || 0);
     return cumExpense;
   });
+
+  if (sortedTxns.length === 0) {
+    dates = ["Awaiting Statement"];
+    balances = [0];
+    cumulativeExpenses = [0];
+  }
 
   if (state.charts.trendLine) {
     state.charts.trendLine.destroy();
@@ -840,9 +864,15 @@ function renderCategoryComparisonBar(transactions) {
 
   // Sort descending
   const sortedEntries = Object.entries(catMap).sort((a, b) => b[1] - a[1]);
-  const labels = sortedEntries.map(e => e[0]);
-  const data = sortedEntries.map(e => e[1]);
-  const colors = labels.map(l => CATEGORY_COLORS[l] || "#94a3b8");
+  let labels = sortedEntries.map(e => e[0]);
+  let data = sortedEntries.map(e => e[1]);
+  let colors = labels.map(l => CATEGORY_COLORS[l] || "#94a3b8");
+
+  if (labels.length === 0) {
+    labels = ["Awaiting Statement"];
+    data = [0];
+    colors = ["#334155"];
+  }
 
   if (state.charts.categoryComparisonBar) {
     state.charts.categoryComparisonBar.destroy();
@@ -2019,14 +2049,52 @@ function addQuickSampleBatch(count = 5) {
   showToast(`⚡ Added ${addedRecords.length} sample transactions! Charts & ledger updated.`, "success");
 }
 
-function clearAllTransactions() {
-  if (confirm("Clear all transactions from the local database? You can add sample data again with 1-click anytime.")) {
-    state.transactions = [];
-    saveToStorage();
-    populateSourceSelect();
-    updateDashboard();
-    showToast("Cleared all transactions. Click '+ Add Sample Data' to reload!", "info");
+// Hard Reset Engine
+function promptHardReset() {
+  const modal = document.getElementById("modal-hard-reset");
+  if (modal) {
+    modal.classList.remove("hidden");
+  } else if (confirm("Completely reset all transactions, balances, and charts to 0?")) {
+    executeHardReset();
   }
+}
+
+function executeHardReset() {
+  document.getElementById("modal-hard-reset")?.classList.add("hidden");
+  
+  // 1. Wipe in-memory transactions
+  state.transactions = [];
+  
+  // 2. Clear browser localStorage
+  localStorage.removeItem("ledger_transactions");
+  localStorage.setItem("ledger_transactions", JSON.stringify([]));
+  
+  // 3. Reset pagination & filters
+  state.pagination.currentPage = 1;
+  state.filters = { search: "", category: "all", source: "all", month: "all", type: "all" };
+  
+  const searchInput = document.getElementById("filter-search");
+  const catSelect = document.getElementById("filter-category");
+  const srcSelect = document.getElementById("filter-source");
+  const monthSelect = document.getElementById("filter-month");
+  const typeSelect = document.getElementById("filter-type");
+  
+  if (searchInput) searchInput.value = "";
+  if (catSelect) catSelect.value = "all";
+  if (srcSelect) srcSelect.value = "all";
+  if (monthSelect) monthSelect.value = "all";
+  if (typeSelect) typeSelect.value = "all";
+
+  // 4. Update UI, Metrics and Charts
+  populateSourceSelect();
+  updateDashboard();
+
+  // 5. User Feedback
+  showToast("Ledger completely reset to 0! Ready for your bank statement.", "info");
+}
+
+function clearAllTransactions() {
+  promptHardReset();
 }
 
 // Explicit window bindings for inline HTML handlers
@@ -2034,6 +2102,10 @@ window.simulateParser = simulateParser;
 window.simulateEncryptedPDF = simulateEncryptedPDF;
 window.submitPasswordUnlock = submitPasswordUnlock;
 window.addSampleTransactions = addSampleTransactions;
+window.addQuickSampleBatch = addQuickSampleBatch;
 window.clearAllTransactions = clearAllTransactions;
+window.promptHardReset = promptHardReset;
+window.executeHardReset = executeHardReset;
+window.resetToDefaultData = resetToDefaultData;
 
 
