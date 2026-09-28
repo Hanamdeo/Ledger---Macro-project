@@ -66,7 +66,7 @@ const INITIAL_TRANSACTIONS = [
 
 // Normalization & Rule Mapping Engine
 const DEFAULT_RULES = [
-  { id: 1, pattern: "SWIGGY", cleanMerchant: "SWIGGY", category: "Food & Dining", type: "contains" },
+  { id: 1, pattern: "SWIGGY|INSTAMART", cleanMerchant: "SWIGGY", category: "Food & Dining", type: "regex" },
   { id: 2, pattern: "ZOMATO", cleanMerchant: "ZOMATO", category: "Food & Dining", type: "contains" },
   { id: 3, pattern: "DOMINOS", cleanMerchant: "DOMINOS PIZZA", category: "Food & Dining", type: "contains" },
   { id: 4, pattern: "CAFE COFFEE DAY|CCD", cleanMerchant: "CAFE COFFEE DAY", category: "Food & Dining", type: "regex" },
@@ -92,13 +92,21 @@ const DEFAULT_RULES = [
   { id: 24, pattern: "HOTSTAR|DISNEY", cleanMerchant: "DISNEY+ HOTSTAR", category: "Subscriptions & Entertainment", type: "regex" },
   { id: 25, pattern: "APOLLO", cleanMerchant: "APOLLO PHARMACY", category: "Health & Wellness", type: "contains" },
   { id: 26, pattern: "1MG|TATA 1MG", cleanMerchant: "TATA 1MG", category: "Health & Wellness", type: "regex" },
-  { id: 27, pattern: "BLINKIT", cleanMerchant: "BLINKIT", category: "Groceries", type: "contains" },
+  { id: 27, pattern: "BLINKIT|GROFERS", cleanMerchant: "BLINKIT", category: "Groceries", type: "regex" },
   { id: 28, pattern: "ZEPTO", cleanMerchant: "ZEPTO", category: "Groceries", type: "contains" },
   { id: 29, pattern: "ZERODHA", cleanMerchant: "ZERODHA", category: "Investments", type: "contains" },
   { id: 30, pattern: "GROWW", cleanMerchant: "GROWW MF", category: "Investments", type: "contains" },
   { id: 31, pattern: "STIPEND|TCS", cleanMerchant: "INTERNSHIP STIPEND", category: "Income", type: "regex" },
   { id: 32, pattern: "UPWORK", cleanMerchant: "UPWORK FREELANCE", category: "Income", type: "contains" },
-  { id: 33, pattern: "INTEREST|INT CR", cleanMerchant: "BANK INTEREST", category: "Income", type: "regex" }
+  { id: 33, pattern: "INTEREST|INT CR|INTEREST CREDIT", cleanMerchant: "BANK INTEREST", category: "Income", type: "regex" },
+  { id: 34, pattern: "PHONEPE|PHONE PE", cleanMerchant: "PhonePe", category: "Miscellaneous", type: "regex" },
+  { id: 35, pattern: "RENT|rent", cleanMerchant: "Rent Payment", category: "Utilities & Bills", type: "contains" },
+  { id: 36, pattern: "SALARY|SALRY|SAL CR", cleanMerchant: "Salary Credit", category: "Income", type: "regex" },
+  { id: 37, pattern: "PAYTM", cleanMerchant: "PayTM", category: "Miscellaneous", type: "contains" },
+  { id: 38, pattern: "MAGGI|CHAI|COFFEE|TEA|JUICE|FOOD|SNACK|DHABA", cleanMerchant: "Food Purchase", category: "Food & Dining", type: "regex" },
+  { id: 39, pattern: "VEGETABLE|VEG|SABZI|SABZ|MILK|GROCERY|GROCER|KIRANA|DUKAN", cleanMerchant: "Groceries", category: "Groceries", type: "regex" },
+  { id: 40, pattern: "INDOLE|RESTAUR|BIRYANI|DOSA|BURGER|PIZZA|NOODLE", cleanMerchant: "Restaurant", category: "Food & Dining", type: "regex" }
+
 ];
 
 const CATEGORY_COLORS = {
@@ -1474,75 +1482,139 @@ function handlePdfImport(file) {
 }
 
 function extractTransactionsFromPdfText(text, filename) {
-  const lines = text.split("\n");
+  const lines = text.split("\n").map(l => l.trim()).filter(l => l.length > 0);
   const extracted = [];
-  const dateRegex = /\b(\d{2}[-/]\d{2}[-/]\d{4}|\d{4}-\d{2}-\d{2})\b/;
 
-  // Check if we found structured lines
+  // --------------------------------------------------------
+  // BLOCK-BASED PARSER
+  // Handles multi-line transaction blocks (SBI, HDFC, Axis)
+  // Each transaction starts with a line matching a date pattern
+  // e.g.:  "03/09/2026 03/09/2026"  or  "2026-09-03"
+  // --------------------------------------------------------
+  const DATE_LINE_RE = /^\d{2}[-/]\d{2}[-/]\d{2,4}/;
+  const ISO_DATE_RE  = /^\d{4}-\d{2}-\d{2}/;
+  const AMOUNT_RE    = /[\d,]+\.\d{2}/g;
+
+  const NOISE = /Statement\s*(From|To|of|Summary)|Account\s*(Number|open|Status)|Branch\s*(Code|Email|Phone)|MICR|IFSC|CIF\s*Num|Drawing\s*Power|Interest\s*Rate|Nominee|Currency|Product|Welcome|Page\s*no|Brought\s*Forward|Total\s*Debit|Total\s*Credit|Closing\s*Balance|CKYCR|Please\s*do\s*not|computer\s*generated|Power\s*of\s*Attorney/i;
+
+  function isDateLine(line) {
+    return (DATE_LINE_RE.test(line) || ISO_DATE_RE.test(line)) && !NOISE.test(line);
+  }
+
+  // Collect all transaction blocks
+  const blocks = [];
+  let currentBlock = null;
+
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-    const dateMatch = line.match(dateRegex);
-    if (dateMatch) {
-      // Look for currency numbers like 540.00, 35,000.00
-      const numbers = line.match(/[\d,]+\.\d{2}/g);
-      if (numbers && numbers.length >= 1) {
-        const dateStr = dateMatch[0];
-        let rawDesc = line.replace(dateStr, "").replace(/[\d,]+\.\d{2}/g, "").trim();
-        if (rawDesc.length < 3) rawDesc = "BANK STATEMENT TXN";
-        
-        const amount = parseFloat(numbers[0].replace(/,/g, '')) || 0;
-        const balance = numbers[1] ? parseFloat(numbers[1].replace(/,/g, '')) || 0 : 0;
-        const isCredit = /CREDIT|SALARY|STIPEND|CR|REFUND/i.test(line);
-
-        const classification = classifyDescription(rawDesc);
-        const newTxn = {
-          transaction_id: `TXN-PDF-${Date.now().toString().slice(-4)}-${extracted.length + 1}`,
-          date: standardizeDateStr(dateStr),
-          raw_description: rawDesc,
-          description: classification.cleanMerchant,
-          category: classification.category,
-          debit: isCredit ? 0 : amount,
-          credit: isCredit ? amount : 0,
-          balance: balance || (95000 + (isCredit ? amount : -amount)),
-          source_file: filename
-        };
-        state.transactions.unshift(newTxn);
-        extracted.push(newTxn);
+    const line = lines[i];
+    if (isDateLine(line)) {
+      if (currentBlock) blocks.push(currentBlock);
+      currentBlock = { lines: [line] };
+    } else if (currentBlock) {
+      if (NOISE.test(line)) {
+        blocks.push(currentBlock);
+        currentBlock = null;
+      } else {
+        currentBlock.lines.push(line);
       }
     }
   }
+  if (currentBlock) blocks.push(currentBlock);
 
-  // Fallback if statement format was tightly grouped
+  // --------------------------------------------------------
+  // Parse each block into a transaction record
+  // --------------------------------------------------------
+  blocks.forEach((block, blockIdx) => {
+    const combined = block.lines.join(" ");
+
+    // Extract amounts
+    const amounts = [...combined.matchAll(/[\d,]+\.\d{2}/g)].map(m => parseFloat(m[0].replace(/,/g, "")));
+    if (amounts.length === 0) return;
+
+    const balance = amounts[amounts.length - 1] || 0;
+    const txnAmt  = amounts.length >= 2 ? amounts[amounts.length - 2] : 0;
+
+    // Determine DR / CR
+    const isDeposit    = /\bDEP\s+TFR\b|\bUPI\/CR\b|\bNEFT[- ]?CR\b|\bINTEREST\s+CREDIT\b|\bSALARY\b|\bSTIPEND\b|\bREFUND\b|\bCREDIT\b/i.test(combined);
+    const isWithdrawal = /\bWDL\s+TFR\b|\bUPI\/DR\b|\bNEFT[- ]?DR\b|\bCHQ\s+PAID\b|\bBILLPAY\b|\bATM\s+WDL\b/i.test(combined);
+
+    let debit  = 0;
+    let credit = 0;
+    if (isDeposit && !isWithdrawal) {
+      credit = txnAmt;
+    } else if (isWithdrawal && !isDeposit) {
+      debit = txnAmt;
+    } else if (txnAmt > 0) {
+      debit = txnAmt;
+    }
+
+    // Extract date
+    let dateStr = "";
+    const dMatch = combined.match(/(\d{2}[-/]\d{2}[-/]\d{2,4})/);
+    const iMatch = combined.match(/(\d{4}-\d{2}-\d{2})/);
+    dateStr = (dMatch && dMatch[1]) || (iMatch && iMatch[1]) || "";
+
+    // Extract narration — prefer UPI line for clean merchant name
+    let rawDesc = "";
+    const upiLine = block.lines.find(l => /^UPI\//i.test(l));
+    if (upiLine) {
+      const parts = upiLine.split("/");
+      if (parts.length >= 4) {
+        const entity  = parts[3].trim();
+        const remarks = parts.length >= 7 ? parts[6].trim() : (parts.length >= 6 ? parts[5].trim() : "");
+        rawDesc = (remarks && remarks.length > 1) ? `${entity} (${remarks})` : entity;
+      } else {
+        rawDesc = upiLine;
+      }
+    } else {
+      const narLines = block.lines.filter(l =>
+        !DATE_LINE_RE.test(l) &&
+        !ISO_DATE_RE.test(l) &&
+        !/[\d,]+\.\d{2}/.test(l) &&
+        !/^\d{10,}/.test(l) &&
+        !/AT\s+\d+/.test(l) &&
+        l !== "KARMETA" &&
+        !/^(WDL|DEP)\s+TFR/.test(l) &&
+        !NOISE.test(l)
+      );
+      rawDesc = narLines.join(" ").trim() || "BANK TXN";
+    }
+
+    rawDesc = rawDesc.replace(/\s+/g, " ").trim();
+    if (rawDesc.length < 2) rawDesc = "BANK TXN";
+
+    const classification = classifyDescription(rawDesc);
+
+    const newTxn = {
+      transaction_id: `TXN-PDF-${Date.now().toString().slice(-6)}-${blockIdx + 1}`,
+      date: standardizeDateStr(dateStr),
+      raw_description: rawDesc,
+      description: classification.cleanMerchant,
+      category: classification.category,
+      debit: debit,
+      credit: credit,
+      balance: balance,
+      source_file: filename
+    };
+
+    state.transactions.unshift(newTxn);
+    extracted.push(newTxn);
+  });
+
+  // If nothing parsed, show a helpful error instead of fake data
   if (extracted.length === 0) {
-    const sampleHdfc = [
-      { raw: "UPI/SWIGGY-REST4892-BLR", debit: 480.0, credit: 0.0, date: "2026-09-01" },
-      { raw: "ACH-TCS-INNOVATION-LABS-STIPEND-CR", debit: 0.0, credit: 35000.0, date: "2026-09-02" },
-      { raw: "POS 401289 UBER INDIA RIDES MUMBAI", debit: 340.0, credit: 0.0, date: "2026-09-05" },
-      { raw: "UPI/IRCTC-TICKETING-NEW-DELHI", debit: 1250.0, credit: 0.0, date: "2026-09-12" },
-      { raw: "NETFLIX ENTERTAINMENT SVCS MUMBAI", debit: 649.0, credit: 0.0, date: "2026-09-15" },
-      { raw: "AMZN MKTP IN*RETAIL HYD APPAREL", debit: 2199.0, credit: 0.0, date: "2026-09-18" }
-    ];
-    sampleHdfc.forEach((s, idx) => {
-      const classification = classifyDescription(s.raw);
-      const newTxn = {
-        transaction_id: `TXN-PDF-DEC-${Date.now().toString().slice(-4)}-${idx+1}`,
-        date: s.date,
-        raw_description: s.raw,
-        description: classification.cleanMerchant,
-        category: classification.category,
-        debit: s.debit,
-        credit: s.credit,
-        balance: 95000.00 + (s.credit - s.debit),
-        source_file: filename
-      };
-      state.transactions.unshift(newTxn);
-      extracted.push(newTxn);
-    });
+    const logOutput = document.getElementById("parser-log-output");
+    if (logOutput) {
+      logOutput.innerHTML += `<span class="text-amber-400">[!] Could not detect structured transactions in this PDF.<br>
+        &nbsp;&nbsp;&nbsp;&bull; Supported: SBI, HDFC, ICICI UPI text-based e-statements.<br>
+        &nbsp;&nbsp;&nbsp;&bull; Scanned image PDFs are not supported — download the digital e-statement from your bank portal.<br>
+        &nbsp;&nbsp;&nbsp;&bull; Try CSV export from your bank's net-banking as an alternative.</span><br>`;
+    }
   }
 
   return extracted;
 }
+
 
 function standardizeDateStr(str) {
   if (!str) return "2026-09-25";
