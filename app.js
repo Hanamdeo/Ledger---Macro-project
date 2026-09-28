@@ -1454,8 +1454,32 @@ function handlePdfImport(file) {
       for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
         const page = await pdfDoc.getPage(pageNum);
         const textContent = await page.getTextContent();
-        const pageText = textContent.items.map(item => item.str).join(" ");
-        allText += pageText + "\n";
+
+        // ── Reconstruct visual lines using Y-coordinate grouping ──
+        // Each item has a transform matrix: [scaleX,skewX,skewY,scaleY,tx,ty]
+        // transform[5] is the Y position. Items within 3pts of each other
+        // are on the same visual line. Sort by Y descending (top of page first),
+        // then by X within each line.
+        const items = textContent.items.filter(it => it.str && it.str.trim());
+        if (items.length === 0) continue;
+
+        // Group by rounded Y bucket (3pt tolerance)
+        const lineMap = new Map();
+        for (const item of items) {
+          const yBucket = Math.round(item.transform[5] / 3) * 3;
+          if (!lineMap.has(yBucket)) lineMap.set(yBucket, []);
+          lineMap.get(yBucket).push({ x: item.transform[4], text: item.str });
+        }
+
+        // Sort Y buckets descending (higher Y = higher on PDF page)
+        const sortedYs = [...lineMap.keys()].sort((a, b) => b - a);
+
+        for (const y of sortedYs) {
+          const rowItems = lineMap.get(y).sort((a, b) => a.x - b.x);
+          const rowText = rowItems.map(r => r.text).join(" ").trim();
+          if (rowText) allText += rowText + "\n";
+        }
+        allText += "\n"; // page separator
       }
 
       // Extract transaction lines from PDF text
