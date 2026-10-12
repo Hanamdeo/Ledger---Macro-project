@@ -1375,11 +1375,85 @@ function submitPasswordUnlock() {
 
 function handleRealFileImport(file) {
   const isPdf = file.name.toLowerCase().endsWith(".pdf");
-  if (isPdf) {
-    handlePdfImport(file);
+
+  // If there are existing transactions, ask whether to replace or append
+  if (state.transactions.length > 0) {
+    showImportModeModal(file, isPdf ? "pdf" : "csv");
   } else {
-    handleCsvImport(file);
+    if (isPdf) handlePdfImport(file);
+    else handleCsvImport(file);
   }
+}
+
+function showImportModeModal(file, type) {
+  // Inject a lightweight inline modal if not already present
+  let modal = document.getElementById("modal-import-mode");
+  if (!modal) {
+    modal = document.createElement("div");
+    modal.id = "modal-import-mode";
+    modal.className = "modal-overlay fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4";
+    modal.innerHTML = `
+      <div class="glass-panel bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-4">
+        <div class="flex items-center space-x-3 border-b border-slate-800 pb-3">
+          <div class="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center text-base">📥</div>
+          <div>
+            <h3 class="font-bold text-sm text-white">Import Statement</h3>
+            <p id="import-modal-subtitle" class="text-xs text-slate-400"></p>
+          </div>
+        </div>
+        <p class="text-xs text-slate-300 leading-relaxed">
+          You currently have <strong id="import-existing-count" class="text-white"></strong> existing transactions.<br>
+          What would you like to do?
+        </p>
+        <div class="flex flex-col gap-2.5">
+          <button id="btn-import-replace" class="w-full px-4 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/40 text-rose-300 font-semibold text-xs transition text-left flex items-center gap-2.5">
+            <span class="text-base">🗑️</span>
+            <div>
+              <div class="font-bold">Replace — clear existing, load only my statement</div>
+              <div class="text-rose-400/70 font-normal mt-0.5">Recommended for testing with your own bank data</div>
+            </div>
+          </button>
+          <button id="btn-import-append" class="w-full px-4 py-2.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/40 text-indigo-300 font-semibold text-xs transition text-left flex items-center gap-2.5">
+            <span class="text-base">➕</span>
+            <div>
+              <div class="font-bold">Append — add statement on top of existing records</div>
+              <div class="text-indigo-400/70 font-normal mt-0.5">Useful for merging multiple statements</div>
+            </div>
+          </button>
+          <button id="btn-import-cancel" class="w-full px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 text-xs transition">Cancel</button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+  }
+
+  // Update counts
+  document.getElementById("import-existing-count").textContent = state.transactions.length;
+  document.getElementById("import-modal-subtitle").textContent = file.name;
+  modal.classList.remove("hidden");
+
+  // Wire up buttons (replace old listeners by cloning)
+  const replaceBtn = document.getElementById("btn-import-replace");
+  const appendBtn  = document.getElementById("btn-import-append");
+  const cancelBtn  = document.getElementById("btn-import-cancel");
+
+  const close = () => modal.classList.add("hidden");
+
+  replaceBtn.onclick = () => {
+    close();
+    // Clear all existing transactions first
+    state.transactions = [];
+    saveToStorage();
+    if (type === "pdf") handlePdfImport(file);
+    else handleCsvImport(file);
+  };
+
+  appendBtn.onclick = () => {
+    close();
+    if (type === "pdf") handlePdfImport(file);
+    else handleCsvImport(file);
+  };
+
+  cancelBtn.onclick = close;
 }
 
 function handlePdfImport(file) {
