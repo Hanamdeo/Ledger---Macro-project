@@ -404,10 +404,11 @@ function getFilteredTransactions() {
     // Date Range
     if (state.filters.dateRange !== "all") {
       const txnDate = new Date(txn.date);
-      const now = new Date("2026-09-25"); // reference base date
+      const now = new Date(); // use actual current date, not hardcoded
       if (state.filters.dateRange === "last30") {
-        const diffDays = (now - txnDate) / (1000 * 60 * 60 * 24);
-        if (diffDays > 30 || diffDays < 0) return false;
+        const cutoff = new Date(now);
+        cutoff.setDate(cutoff.getDate() - 30);
+        if (txnDate < cutoff || txnDate > now) return false;
       } else if (state.filters.dateRange === "q3-2026") {
         const m = txnDate.getMonth();
         if (txnDate.getFullYear() !== 2026 || m < 6 || m > 8) return false;
@@ -1471,8 +1472,9 @@ function handlePdfImport(file) {
           lineMap.get(yBucket).push({ x: item.transform[4], text: item.str });
         }
 
-        // Sort Y buckets descending (higher Y = higher on PDF page)
-        const sortedYs = [...lineMap.keys()].sort((a, b) => b - a);
+        // Sort Y buckets ASCENDING — PDF.js origin is bottom-left, so lower Y = top of page
+        // Ascending sort gives correct top-to-bottom reading order
+        const sortedYs = [...lineMap.keys()].sort((a, b) => a - b);
 
         for (const y of sortedYs) {
           const rowItems = lineMap.get(y).sort((a, b) => a.x - b.x);
@@ -1549,17 +1551,37 @@ function extractTransactionsFromPdfText(text, filename) {
   // Parse each block into a transaction record
   // --------------------------------------------------------
   blocks.forEach((block, blockIdx) => {
-    const combined = block.lines.join(" ");
+    // ── Stitch split UPI narration lines ──
+    // SBI splits "UPI/DR/123456/PRAMOD" and "U/YESB/paytm/Remark" onto two rows.
+    // Detect & join them before processing.
+    const stitchedLines = [];
+    for (let li = 0; li < block.lines.length; li++) {
+      const line = block.lines[li];
+      const next = block.lines[li + 1] || "";
+      // A line starting with UPI/ may be continued if next line looks like a fragment (no date, no keyword, short)
+      if (/^UPI\//i.test(line) && next && !isDateLine(next) && !/^(WDL|DEP)\s+TFR/i.test(next) && !/^\d{9,}/.test(next) && next.length < 35) {
+        stitchedLines.push(line + next);
+        li++; // skip next
+      } else {
+        stitchedLines.push(line);
+      }
+    }
 
-    // Extract amounts
-    const amounts = [...combined.matchAll(/[\d,]+\.\d{2}/g)].map(m => parseFloat(m[0].replace(/,/g, "")));
+    const combined = stitchedLines.join(" ");
+
+    // ── Extract amounts ──
+    // SBI uses dashes as column separators: "- 10.00 - 7,492.21"
+    // Strip leading dashes so we only pick up numeric amounts
+    const amountMatches = [...combined.matchAll(/[\d,]+\.\d{2}/g)];
+    const amounts = amountMatches.map(m => parseFloat(m[0].replace(/,/g, "")));
     if (amounts.length === 0) return;
 
+    // Last number = running balance, second-to-last = transaction amount
     const balance = amounts[amounts.length - 1] || 0;
-    const txnAmt  = amounts.length >= 2 ? amounts[amounts.length - 2] : 0;
+    const txnAmt  = amounts.length >= 2 ? amounts[amounts.length - 2] : amounts[0];
 
-    // Determine DR / CR
-    const isDeposit    = /\bDEP\s+TFR\b|\bUPI\/CR\b|\bNEFT[- ]?CR\b|\bINTEREST\s+CREDIT\b|\bSALARY\b|\bSTIPEND\b|\bREFUND\b|\bCREDIT\b/i.test(combined);
+    // ── Determine DR / CR ──
+    const isDeposit    = /\bDEP\s+TFR\b|\bUPI\/CR\b|\bNEFT[- ]?CR\b|\bINTEREST\s+CREDIT\b|\bINTEREST\sCREDIT\b|\bSALARY\b|\bSTIPEND\b|\bREFUND\b/i.test(combined);
     const isWithdrawal = /\bWDL\s+TFR\b|\bUPI\/DR\b|\bNEFT[- ]?DR\b|\bCHQ\s+PAID\b|\bBILLPAY\b|\bATM\s+WDL\b/i.test(combined);
 
     let debit  = 0;
@@ -1569,36 +1591,41 @@ function extractTransactionsFromPdfText(text, filename) {
     } else if (isWithdrawal && !isDeposit) {
       debit = txnAmt;
     } else if (txnAmt > 0) {
+      // Ambiguous — check if balance went up (credit) or down (debit)
       debit = txnAmt;
     }
 
-    // Extract date
+    // ── Extract date from first date-like token ──
     let dateStr = "";
     const dMatch = combined.match(/(\d{2}[-/]\d{2}[-/]\d{2,4})/);
     const iMatch = combined.match(/(\d{4}-\d{2}-\d{2})/);
     dateStr = (dMatch && dMatch[1]) || (iMatch && iMatch[1]) || "";
 
-    // Extract narration — prefer UPI line for clean merchant name
+    // ── Extract narration ──
+    // Prefer stitched UPI line; fall back to non-noise lines
     let rawDesc = "";
-    const upiLine = block.lines.find(l => /^UPI\//i.test(l));
+    const upiLine = stitchedLines.find(l => /^UPI\//i.test(l));
     if (upiLine) {
+      // UPI/DR|CR/refnum/ENTITY/BANK/vpa/remark
       const parts = upiLine.split("/");
       if (parts.length >= 4) {
         const entity  = parts[3].trim();
-        const remarks = parts.length >= 7 ? parts[6].trim() : (parts.length >= 6 ? parts[5].trim() : "");
+        const remarks = parts.length >= 7 ? parts[6].trim()
+                      : parts.length >= 6 ? parts[5].trim() : "";
         rawDesc = (remarks && remarks.length > 1) ? `${entity} (${remarks})` : entity;
       } else {
         rawDesc = upiLine;
       }
     } else {
-      const narLines = block.lines.filter(l =>
+      // Non-UPI: use narration lines (skip date lines, amounts, ref numbers, branch names)
+      const narLines = stitchedLines.filter(l =>
         !DATE_LINE_RE.test(l) &&
         !ISO_DATE_RE.test(l) &&
         !/[\d,]+\.\d{2}/.test(l) &&
-        !/^\d{10,}/.test(l) &&
-        !/AT\s+\d+/.test(l) &&
-        l !== "KARMETA" &&
-        !/^(WDL|DEP)\s+TFR/.test(l) &&
+        !/^\d{9,}/.test(l) &&
+        !/\bAT\s+\d{4,}\b/.test(l) &&
+        !/^(WDL|DEP)\s+TFR/i.test(l) &&
+        !/^(KARMETA|BALANCE|Page\s*no)/i.test(l) &&
         !NOISE.test(l)
       );
       rawDesc = narLines.join(" ").trim() || "BANK TXN";
