@@ -104,9 +104,11 @@ const DEFAULT_RULES = [
   { id: 36, pattern: "SALARY|SALRY|SAL CR", cleanMerchant: "Salary Credit", category: "Income", type: "regex" },
   { id: 37, pattern: "PAYTM", cleanMerchant: "PayTM", category: "Miscellaneous", type: "contains" },
   { id: 38, pattern: "MAGGI|CHAI|COFFEE|TEA|JUICE|FOOD|SNACK|DHABA", cleanMerchant: "Food Purchase", category: "Food & Dining", type: "regex" },
-  { id: 39, pattern: "VEGETABLE|VEG|SABZI|SABZ|MILK|GROCERY|GROCER|KIRANA|DUKAN", cleanMerchant: "Groceries", category: "Groceries", type: "regex" },
-  { id: 40, pattern: "INDOLE|RESTAUR|BIRYANI|DOSA|BURGER|PIZZA|NOODLE", cleanMerchant: "Restaurant", category: "Food & Dining", type: "regex" }
-
+  { id: 39, pattern: "VEGETABLE|VEG|SABZI|SABZ|MILK|DHOOD|DUDDU|GROCERY|GROCER|KIRANA|DUKAN", cleanMerchant: "Groceries", category: "Groceries", type: "regex" },
+  { id: 40, pattern: "INDOLE|RESTAUR|BIRYANI|DOSA|BURGER|PIZZA|NOODLE", cleanMerchant: "Restaurant", category: "Food & Dining", type: "regex" },
+  { id: 41, pattern: "DBT|OPMS|TSCSC|SCHOLARSHIP|SUBSIDY|NBCUA1B", cleanMerchant: "DBT Govt Transfer", category: "Income", type: "regex" },
+  { id: 42, pattern: "GYM|FITNESS|WORKOUT", cleanMerchant: "Gym Membership", category: "Health & Wellness", type: "regex" },
+  { id: 43, pattern: "VISHAL|ARYAN|DIVYANSH|TEJSHWI|SHOURYA|GUDDI|MANOJ|GOVIND|PRAMOD|SATYANAR", cleanMerchant: "Personal Transfer", category: "Personal & Transfers", type: "regex" }
 ];
 
 const CATEGORY_COLORS = {
@@ -120,6 +122,7 @@ const CATEGORY_COLORS = {
   "Groceries": "#14b8a6",
   "Investments": "#6366f1",
   "Income": "#22c55e",
+  "Personal & Transfers": "#0ea5e9",
   "Miscellaneous": "#94a3b8"
 };
 
@@ -206,16 +209,32 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // Load storage or defaults
+const APP_STORAGE_VERSION = "v9";
+
 function initStorage() {
+  // ── One-time migration: wipe stale data from old versions ──
+  // If the stored version key doesn't match, the user has old mixed/demo data
+  // from a previous session. Clear it so they start fresh.
+  const storedVersion = localStorage.getItem("pf_app_version");
+  if (storedVersion !== APP_STORAGE_VERSION) {
+    localStorage.removeItem("pf_transactions");
+    localStorage.removeItem("pf_rules");
+    localStorage.setItem("pf_app_version", APP_STORAGE_VERSION);
+    // Start with NO transactions — ready to upload real bank statement
+    state.transactions = [];
+    state.rules = [...DEFAULT_RULES];
+    return;
+  }
+
   const savedTxns = localStorage.getItem("pf_transactions");
   if (savedTxns) {
     try {
       state.transactions = JSON.parse(savedTxns);
     } catch (e) {
-      state.transactions = [...INITIAL_TRANSACTIONS];
+      state.transactions = [];
     }
   } else {
-    state.transactions = [...INITIAL_TRANSACTIONS];
+    state.transactions = [];
   }
 
   const savedRules = localStorage.getItem("pf_rules");
@@ -264,7 +283,23 @@ function classifyDescription(rawDescription) {
     }
   }
 
-  // Fallback heuristic: clean up common prefixes like UPI, POS, ACH
+  // Fallback heuristic: clean up UPI / POS / ACH formats cleanly
+  if (/^UPI\/(DR|CR)\//i.test(rawDescription)) {
+    const parts = rawDescription.split("/");
+    const drCr = parts[1].toUpperCase();
+    const entity = parts[3] ? parts[3].trim() : "";
+    const remark = parts.length >= 7 ? parts[6].trim() : (parts.length >= 6 ? parts[5].trim() : "");
+    const cleanName = remark && remark.length > 1 && !/^(PAYME|UPI|NO RE)$/i.test(remark)
+      ? `${entity} (${remark})`
+      : (entity || "UPI Transfer");
+    const cat = drCr === "CR" ? "Income" : "Personal & Transfers";
+    return {
+      cleanMerchant: cleanName,
+      category: cat,
+      rule: null
+    };
+  }
+
   let cleaned = rawDescription
     .replace(/^(UPI[-/]|POS[-/]|ACH[-/]|NEFT[-/]|BILLPAY[-/])/i, "")
     .split(/[-/*_]/)[0]
@@ -404,11 +439,12 @@ function getFilteredTransactions() {
     // Date Range
     if (state.filters.dateRange !== "all") {
       const txnDate = new Date(txn.date);
-      const now = new Date(); // use actual current date, not hardcoded
       if (state.filters.dateRange === "last30") {
-        const cutoff = new Date(now);
+        const timestamps = state.transactions.map(t => new Date(t.date).getTime()).filter(t => !isNaN(t));
+        const maxTime = timestamps.length > 0 ? Math.max(...timestamps) : Date.now();
+        const cutoff = new Date(maxTime);
         cutoff.setDate(cutoff.getDate() - 30);
-        if (txnDate < cutoff || txnDate > now) return false;
+        if (txnDate < cutoff) return false;
       } else if (state.filters.dateRange === "q3-2026") {
         const m = txnDate.getMonth();
         if (txnDate.getFullYear() !== 2026 || m < 6 || m > 8) return false;
@@ -1643,30 +1679,71 @@ function extractTransactionsFromPdfText(text, filename) {
 
     const combined = stitchedLines.join(" ");
 
-    // ── Extract amounts ──
-    // SBI uses dashes as column separators: "- 10.00 - 7,492.21"
-    // Strip leading dashes so we only pick up numeric amounts
-    const amountMatches = [...combined.matchAll(/[\d,]+\.\d{2}/g)];
-    const amounts = amountMatches.map(m => parseFloat(m[0].replace(/,/g, "")));
-    if (amounts.length === 0) return;
-
-    // Last number = running balance, second-to-last = transaction amount
-    const balance = amounts[amounts.length - 1] || 0;
-    const txnAmt  = amounts.length >= 2 ? amounts[amounts.length - 2] : amounts[0];
-
-    // ── Determine DR / CR ──
-    const isDeposit    = /\bDEP\s+TFR\b|\bUPI\/CR\b|\bNEFT[- ]?CR\b|\bINTEREST\s+CREDIT\b|\bINTEREST\sCREDIT\b|\bSALARY\b|\bSTIPEND\b|\bREFUND\b/i.test(combined);
-    const isWithdrawal = /\bWDL\s+TFR\b|\bUPI\/DR\b|\bNEFT[- ]?DR\b|\bCHQ\s+PAID\b|\bBILLPAY\b|\bATM\s+WDL\b/i.test(combined);
-
-    let debit  = 0;
+    // ── Extract amounts with high precision ──
+    let debit = 0;
     let credit = 0;
-    if (isDeposit && !isWithdrawal) {
-      credit = txnAmt;
-    } else if (isWithdrawal && !isDeposit) {
-      debit = txnAmt;
-    } else if (txnAmt > 0) {
-      // Ambiguous — check if balance went up (credit) or down (debit)
-      debit = txnAmt;
+    let balance = 0;
+    let amountFound = false;
+
+    // Pattern A: Tabular Credit | Debit | Balance (e.g. "- 0 90.00 10494.46" or "- 30030.00 0 38246.46")
+    const tabMatch = combined.match(/-\s+([\d,]+(?:\.\d{2})?)\s+([\d,]+(?:\.\d{2})?)\s+([\d,]+\.\d{2})/);
+    if (tabMatch) {
+      const crVal = parseFloat(tabMatch[1].replace(/,/g, "")) || 0;
+      const drVal = parseFloat(tabMatch[2].replace(/,/g, "")) || 0;
+      const balVal = parseFloat(tabMatch[3].replace(/,/g, "")) || 0;
+      balance = balVal;
+      if (crVal > 0 && drVal === 0) {
+        credit = crVal;
+        amountFound = true;
+      } else if (drVal > 0 && crVal === 0) {
+        debit = drVal;
+        amountFound = true;
+      } else if (crVal > 0 || drVal > 0) {
+        credit = crVal;
+        debit = drVal;
+        amountFound = true;
+      }
+    }
+
+    // Pattern B: SBI format withdrawal: "- 10.00 - 7,492.21"
+    if (!amountFound) {
+      const sbiDrMatch = combined.match(/-\s+([\d,]+\.\d{2})\s+-\s+([\d,]+\.\d{2})/);
+      if (sbiDrMatch) {
+        debit = parseFloat(sbiDrMatch[1].replace(/,/g, "")) || 0;
+        balance = parseFloat(sbiDrMatch[2].replace(/,/g, "")) || 0;
+        amountFound = true;
+      }
+    }
+
+    // Pattern C: SBI format deposit: "- - 279.00 7,761.21"
+    if (!amountFound) {
+      const sbiCrMatch = combined.match(/-\s+-\s+([\d,]+\.\d{2})\s+([\d,]+\.\d{2})/);
+      if (sbiCrMatch) {
+        credit = parseFloat(sbiCrMatch[1].replace(/,/g, "")) || 0;
+        balance = parseFloat(sbiCrMatch[2].replace(/,/g, "")) || 0;
+        amountFound = true;
+      }
+    }
+
+    // Fallback: General decimal amounts
+    if (!amountFound) {
+      const amountMatches = [...combined.matchAll(/[\d,]+\.\d{2}/g)];
+      const amounts = amountMatches.map(m => parseFloat(m[0].replace(/,/g, "")));
+      if (amounts.length === 0) return;
+
+      balance = amounts[amounts.length - 1] || 0;
+      const txnAmt = amounts.length >= 2 ? amounts[amounts.length - 2] : amounts[0];
+
+      const isDeposit = /\b(DEP\s+TFR|UPI\/CR|NEFT[- ]?CR|INTEREST\s+CREDIT|SALARY|STIPEND|REFUND|DBT|CREDIT)\b/i.test(combined);
+      const isWithdrawal = /\b(WDL\s+TFR|UPI\/DR|NEFT[- ]?DR|CHQ\s+PAID|BILLPAY|ATM\s+WDL|DEBIT)\b/i.test(combined);
+
+      if (isDeposit && !isWithdrawal) {
+        credit = txnAmt;
+      } else if (isWithdrawal && !isDeposit) {
+        debit = txnAmt;
+      } else {
+        debit = txnAmt;
+      }
     }
 
     // ── Extract date from first date-like token ──
@@ -1709,13 +1786,16 @@ function extractTransactionsFromPdfText(text, filename) {
     if (rawDesc.length < 2) rawDesc = "BANK TXN";
 
     const classification = classifyDescription(rawDesc);
+    const category = credit > 0 && (classification.category === "Miscellaneous" || classification.category === "Personal & Transfers")
+      ? "Income"
+      : classification.category;
 
     const newTxn = {
       transaction_id: `TXN-PDF-${Date.now().toString().slice(-6)}-${blockIdx + 1}`,
       date: standardizeDateStr(dateStr),
       raw_description: rawDesc,
       description: classification.cleanMerchant,
-      category: classification.category,
+      category: category,
       debit: debit,
       credit: credit,
       balance: balance,
@@ -1745,8 +1825,13 @@ function standardizeDateStr(str) {
   if (!str) return "2026-09-25";
   const parts = str.split(/[-/]/);
   if (parts.length === 3) {
-    if (parts[0].length === 4) return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
-    return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+    if (parts[0].length === 4) {
+      return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+    }
+    const year = parts[2].length === 2 ? '20' + parts[2] : parts[2];
+    const month = parts[1].padStart(2, '0');
+    const day = parts[0].padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
   return str;
 }
