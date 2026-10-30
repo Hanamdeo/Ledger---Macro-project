@@ -196,8 +196,389 @@ function showToast(message, type = "success") {
   }, 3500);
 }
 
+
+// ========================================================
+// THEME ENGINE (LIGHT & DARK MODE)
+// ========================================================
+function initTheme() {
+  const savedTheme = localStorage.getItem("ledger_theme") || "dark";
+  applyTheme(savedTheme, false);
+}
+
+function applyTheme(theme, reRenderCharts = true) {
+  const html = document.documentElement;
+  const isLight = theme === "light";
+
+  if (isLight) {
+    html.classList.add("light");
+    html.classList.remove("dark");
+  } else {
+    html.classList.remove("light");
+    html.classList.add("dark");
+  }
+
+  localStorage.setItem("ledger_theme", theme);
+
+  // Update header and auth buttons
+  const iconHeader = document.getElementById("theme-toggle-icon");
+  const textHeader = document.getElementById("theme-toggle-text");
+  const authIcons = document.querySelectorAll(".auth-theme-icon");
+
+  if (iconHeader) iconHeader.textContent = isLight ? "🌙" : "☀️";
+  if (textHeader) textHeader.textContent = isLight ? "Dark Mode" : "Light Mode";
+  authIcons.forEach(icon => {
+    icon.textContent = isLight ? "🌙" : "☀️";
+  });
+
+  if (reRenderCharts && typeof getFilteredTransactions === "function" && typeof renderCharts === "function") {
+    try {
+      renderCharts(getFilteredTransactions());
+    } catch (e) {
+      // charts not initialized yet
+    }
+  }
+}
+
+function toggleTheme() {
+  const isLight = document.documentElement.classList.contains("light");
+  const newTheme = isLight ? "dark" : "light";
+  applyTheme(newTheme, true);
+  showToast(`Switched to ${newTheme === "light" ? "Light" : "Dark"} mode`, "info");
+}
+
+// ========================================================
+// AUTHENTICATION GATE (SIGN IN & SIGN UP)
+// ========================================================
+const AUTH_USERS_KEY = "ledger_users";
+const AUTH_SESSION_KEY = "ledger_current_user";
+
+function initAuth() {
+  // Pre-seed demo accounts if none exist
+  let users = [];
+  try {
+    users = JSON.parse(localStorage.getItem(AUTH_USERS_KEY)) || [];
+  } catch (e) {
+    users = [];
+  }
+
+  if (users.length === 0) {
+    users = [
+      {
+        name: "Harshit Namdeo",
+        email: "harshit@ledger.finance",
+        username: "harshit",
+        password: "password123",
+        createdAt: "2026-08-01"
+      },
+      {
+        name: "Demo Evaluator",
+        email: "demo@ledger.finance",
+        username: "demo",
+        password: "password123",
+        createdAt: "2026-08-01"
+      }
+    ];
+    localStorage.setItem(AUTH_USERS_KEY, JSON.stringify(users));
+  }
+
+  // Check active session
+  let currentUser = null;
+  try {
+    currentUser = JSON.parse(localStorage.getItem(AUTH_SESSION_KEY));
+  } catch (e) {
+    currentUser = null;
+  }
+
+  if (currentUser && currentUser.email) {
+    renderAuthenticatedUI(currentUser);
+  } else {
+    renderUnauthenticatedUI();
+  }
+
+  // Automatically check & restore live Supabase Cloud session if configured
+  if (window.isSupabaseConfigured && window.isSupabaseConfigured()) {
+    window.cloudGetCurrentUser().then(user => {
+      if (user) {
+        const appUser = {
+          id: user.id,
+          name: user.user_metadata?.full_name || user.email.split("@")[0],
+          email: user.email,
+          isCloud: true
+        };
+        localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(appUser));
+        renderAuthenticatedUI(appUser);
+        syncFromCloud();
+      }
+    }).catch(err => {
+      console.warn("Supabase session check note:", err);
+    });
+  }
+}
+
+function renderAuthenticatedUI(user) {
+  const authContainer = document.getElementById("auth-container");
+  const appContainer = document.getElementById("app-container");
+  const headerAvatar = document.getElementById("header-user-avatar");
+  const headerName = document.getElementById("header-user-name");
+
+  if (authContainer) authContainer.classList.add("hidden");
+  if (appContainer) appContainer.classList.remove("hidden");
+
+  if (user) {
+    const displayName = user.name || user.email.split("@")[0];
+    const initials = displayName
+      .split(" ")
+      .map(part => part[0])
+      .slice(0, 2)
+      .join("")
+      .toUpperCase();
+    if (headerAvatar) headerAvatar.textContent = initials || "HN";
+    if (headerName) headerName.textContent = displayName;
+  }
+}
+
+function renderUnauthenticatedUI() {
+  const authContainer = document.getElementById("auth-container");
+  const appContainer = document.getElementById("app-container");
+
+  if (authContainer) authContainer.classList.remove("hidden");
+  if (appContainer) appContainer.classList.add("hidden");
+}
+
+function switchAuthTab(tab) {
+  const tabSignIn = document.getElementById("tab-auth-signin");
+  const tabSignUp = document.getElementById("tab-auth-signup");
+  const formSignIn = document.getElementById("form-signin");
+  const formSignUp = document.getElementById("form-signup");
+  const alertBox = document.getElementById("auth-alert");
+
+  if (alertBox) alertBox.classList.add("hidden");
+
+  if (tab === "signin") {
+    if (tabSignIn) tabSignIn.className = "flex-1 py-2 text-xs font-bold rounded-lg transition bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-md";
+    if (tabSignUp) tabSignUp.className = "flex-1 py-2 text-xs font-semibold text-slate-400 hover:text-slate-200 rounded-lg transition";
+    if (formSignIn) formSignIn.classList.remove("hidden");
+    if (formSignUp) formSignUp.classList.add("hidden");
+  } else {
+    if (tabSignUp) tabSignUp.className = "flex-1 py-2 text-xs font-bold rounded-lg transition bg-gradient-to-r from-emerald-600 to-emerald-500 text-white shadow-md";
+    if (tabSignIn) tabSignIn.className = "flex-1 py-2 text-xs font-semibold text-slate-400 hover:text-slate-200 rounded-lg transition";
+    if (formSignUp) formSignUp.classList.remove("hidden");
+    if (formSignIn) formSignIn.classList.add("hidden");
+  }
+}
+
+function showAuthAlert(message, type = "error") {
+  const alertBox = document.getElementById("auth-alert");
+  const alertIcon = document.getElementById("auth-alert-icon");
+  const alertText = document.getElementById("auth-alert-text");
+  if (!alertBox) return;
+
+  alertText.textContent = message;
+  if (type === "success") {
+    alertBox.className = "mb-4 p-3 rounded-xl text-xs font-medium border bg-emerald-500/10 border-emerald-500/30 text-emerald-400 flex items-center space-x-2";
+    alertIcon.innerHTML = "✓";
+  } else {
+    alertBox.className = "mb-4 p-3 rounded-xl text-xs font-medium border bg-rose-500/10 border-rose-500/30 text-rose-400 flex items-center space-x-2";
+    alertIcon.innerHTML = "✕";
+  }
+  alertBox.classList.remove("hidden");
+}
+
+async function handleSignInSubmit(event) {
+  event.preventDefault();
+  const idInput = document.getElementById("signin-identifier");
+  const passInput = document.getElementById("signin-password");
+  if (!idInput || !passInput) return;
+
+  const identifier = idInput.value.trim().toLowerCase();
+  const password = passInput.value;
+
+  if (window.isSupabaseConfigured && window.isSupabaseConfigured()) {
+    try {
+      showToast("Connecting to Supabase Cloud Auth...", "info");
+      const user = await window.cloudSignIn(identifier, password);
+      const appUser = {
+        id: user.id,
+        name: user.user_metadata?.full_name || user.email.split("@")[0],
+        email: user.email,
+        isCloud: true
+      };
+      localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(appUser));
+      renderAuthenticatedUI(appUser);
+      showToast(`Welcome back, ${appUser.name}! (Cloud Verified)`, "success");
+      idInput.value = "";
+      passInput.value = "";
+      await syncFromCloud();
+      return;
+    } catch (err) {
+      showAuthAlert(err.message || "Failed to sign in with Supabase.");
+      return;
+    }
+  }
+
+  let users = [];
+  try {
+    users = JSON.parse(localStorage.getItem(AUTH_USERS_KEY)) || [];
+  } catch (e) {
+    users = [];
+  }
+
+  const matchedUser = users.find(u => 
+    (u.email.toLowerCase() === identifier || (u.username && u.username.toLowerCase() === identifier)) &&
+    u.password === password
+  );
+
+  if (matchedUser) {
+    localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(matchedUser));
+    renderAuthenticatedUI(matchedUser);
+    showToast(`Welcome back, ${matchedUser.name}!`, "success");
+    idInput.value = "";
+    passInput.value = "";
+  } else {
+    showAuthAlert("Invalid email/username or password. Try demo credentials or create an account.");
+  }
+}
+
+async function handleSignUpSubmit(event) {
+  event.preventDefault();
+  const nameInput = document.getElementById("signup-name");
+  const emailInput = document.getElementById("signup-email");
+  const passInput = document.getElementById("signup-password");
+  const confirmInput = document.getElementById("signup-confirm-password");
+
+  const name = nameInput.value.trim();
+  const email = emailInput.value.trim().toLowerCase();
+  const password = passInput.value;
+  const confirmPassword = confirmInput.value;
+
+  if (password.length < 6) {
+    showAuthAlert("Password must be at least 6 characters long.");
+    return;
+  }
+
+  if (password !== confirmPassword) {
+    showAuthAlert("Passwords do not match. Please verify.");
+    return;
+  }
+
+  if (window.isSupabaseConfigured && window.isSupabaseConfigured()) {
+    try {
+      showToast("Creating Supabase Cloud Account...", "info");
+      const user = await window.cloudSignUp(email, password, name);
+      const appUser = {
+        id: user.id,
+        name: name,
+        email: email,
+        isCloud: true
+      };
+      localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(appUser));
+      renderAuthenticatedUI(appUser);
+      showToast(`Account created in Supabase! Welcome, ${name}!`, "success");
+      nameInput.value = "";
+      emailInput.value = "";
+      passInput.value = "";
+      confirmInput.value = "";
+      return;
+    } catch (err) {
+      showAuthAlert(err.message || "Failed to create Supabase account.");
+      return;
+    }
+  }
+
+  let users = [];
+  try {
+    users = JSON.parse(localStorage.getItem(AUTH_USERS_KEY)) || [];
+  } catch (e) {
+    users = [];
+  }
+
+  if (users.some(u => u.email.toLowerCase() === email)) {
+    showAuthAlert("An account with this email already exists. Please sign in.");
+    return;
+  }
+
+  const newUser = {
+    name: name,
+    email: email,
+    username: email.split("@")[0],
+    password: password,
+    createdAt: new Date().toISOString()
+  };
+
+  users.push(newUser);
+  localStorage.setItem(AUTH_USERS_KEY, JSON.stringify(users));
+  localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(newUser));
+
+  renderAuthenticatedUI(newUser);
+  showToast(`Account created! Welcome to Ledger, ${name}!`, "success");
+
+  nameInput.value = "";
+  emailInput.value = "";
+  passInput.value = "";
+  confirmInput.value = "";
+}
+
+function loginAsDemoUser() {
+  const demoUser = {
+    name: "Harshit Namdeo",
+    email: "harshit@ledger.finance",
+    username: "harshit",
+    createdAt: "2026-08-01"
+  };
+  localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(demoUser));
+  renderAuthenticatedUI(demoUser);
+  showToast("Signed in as Harshit Namdeo (Demo Access)", "success");
+}
+
+async function handleSignOut() {
+  if (window.isSupabaseConfigured && window.isSupabaseConfigured()) {
+    try {
+      await window.cloudSignOut();
+    } catch (e) {
+      console.warn("Supabase cloud sign out note:", e);
+    }
+  }
+  localStorage.removeItem(AUTH_SESSION_KEY);
+  renderUnauthenticatedUI();
+  showToast("You have been signed out.", "info");
+}
+
+async function syncFromCloud() {
+  if (!window.isSupabaseConfigured || !window.isSupabaseConfigured()) return;
+  try {
+    const cloudTxns = await window.cloudFetchTransactions();
+    if (cloudTxns && cloudTxns.length > 0) {
+      state.transactions = cloudTxns;
+      saveToStorage();
+      populateSourceSelect();
+      updateDashboard();
+      showToast(`Loaded ${cloudTxns.length} transactions from Supabase Cloud`, "info");
+    }
+  } catch (err) {
+    console.warn("Cloud sync note:", err);
+  }
+}
+
+function togglePasswordVisibility(inputId) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  input.type = input.type === "password" ? "text" : "password";
+}
+
+function showDemoCredentials() {
+  const idInput = document.getElementById("signin-identifier");
+  const passInput = document.getElementById("signin-password");
+  if (idInput && passInput) {
+    idInput.value = "harshit@ledger.finance";
+    passInput.value = "password123";
+    showAuthAlert("Demo credentials filled: harshit@ledger.finance / password123", "success");
+  }
+}
+
 // Initialize Application
 document.addEventListener("DOMContentLoaded", () => {
+  initTheme();
+  initAuth();
   initStorage();
   initNavigation();
   initFilterControls();
@@ -2157,17 +2538,9 @@ function initModals() {
     showToast(`Transaction added & auto-classified as "${classification.category}"!`, "success");
   });
 
-  // Academic Project Info Modal
-  const modalAbout = document.getElementById("modal-about-project");
-  const btnOpenAbout = document.getElementById("btn-open-about");
-  const btnCloseAbout = document.getElementById("btn-close-about");
-  btnOpenAbout?.addEventListener("click", () => modalAbout?.classList.remove("hidden"));
-  btnCloseAbout?.addEventListener("click", () => modalAbout?.classList.add("hidden"));
-
   // Close modals on clicking background backdrop
   window.addEventListener("click", (e) => {
     if (e.target === modalAdd) modalAdd.classList.add("hidden");
-    if (e.target === modalAbout) modalAbout.classList.add("hidden");
   });
 }
 
@@ -2380,10 +2753,18 @@ function clearAllTransactions() {
 }
 
 // Explicit window bindings for inline HTML handlers
+window.toggleTheme = toggleTheme;
+window.switchAuthTab = switchAuthTab;
+window.handleSignInSubmit = handleSignInSubmit;
+window.handleSignUpSubmit = handleSignUpSubmit;
+window.loginAsDemoUser = loginAsDemoUser;
+window.handleSignOut = handleSignOut;
+window.togglePasswordVisibility = togglePasswordVisibility;
+window.showDemoCredentials = showDemoCredentials;
 window.simulateParser = simulateParser;
 window.simulateEncryptedPDF = simulateEncryptedPDF;
 window.submitPasswordUnlock = submitPasswordUnlock;
-window.addSampleTransactions = addSampleTransactions;
+window.addSampleTransactions = addQuickSampleBatch;
 window.addQuickSampleBatch = addQuickSampleBatch;
 window.clearAllTransactions = clearAllTransactions;
 window.promptHardReset = promptHardReset;

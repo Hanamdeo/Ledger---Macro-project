@@ -158,3 +158,264 @@ body {
 .modal-overlay.hidden .modal-box {
   transform: scale(0.96) translateY(10px);
 }
+
+/* ========================================================
+   LIGHT & DARK THEME ENGINE
+   ======================================================== */
+
+/* Smooth theme transition */
+body, .glass-panel, header, .nav-tab, input, select, footer, .modal-box {
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.2s ease, box-shadow 0.25s ease;
+}
+
+/* --- LIGHT MODE STYLING --- */
+html.light {
+  color-scheme: light;
+}
+
+html.light body {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+html.light .glow-orb {
+  opacity: 0.04;
+}
+
+/* Header in Light Mode */
+html.light header {
+  background-color: rgba(255, 255, 255, 0.92) !important;
+  border-bottom-color: #e2e8f0 !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+}
+
+html.light header .text-white {
+  color: #0f172a !important;
+}
+
+html.light header .text-slate-400 {
+  color: #64748b !important;
+}
+
+html.light header .bg-slate-800,
+html.light header .bg-slate-900 {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #334155 !important;
+}
+
+html.light header .hover\:bg-slate-700:hover {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+/* Sub-header Navigation Tabs */
+html.light div.bg-slate-900\/60 {
+  background-color: rgba(248, 250, 252, 0.95) !important;
+  border-bottom-color: #e2e8f0 !important;
+}
+
+html.light .nav-tab {
+  color: #64748b !important;
+}
+
+html.light .nav-tab:hover {
+  color: #0f172a !important;
+  background-color: rgba(241, 245, 249, 0.8) !important;
+}
+
+html.light .nav-tab.active {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(6, 182, 212, 0.08) 100%) !important;
+  color: #4f46e5 !important;
+  border-left-color: #4f46e5 !important;
+}
+
+/* Global Filter Bar */
+html.light div.bg-slate-900\/40 {
+  background-color: #ffffff !important;
+  border-bottom-color: #e2e8f0 !important;
+}
+
+html.light div.bg-slate-800\/80,
+html.light div.bg-slate-800\/90 {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+html.light #filter-search,
+html.light select {
+  color: #0f172a !important;
+  background-color: transparent !important;
+}
+
+html.light select option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+html.light #filter-search::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Glass Panels & Cards in Light Mode */
+html.light .glass-panel {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.02);
+}
+
+html.light .glass-panel:hover {
+  border-color: rgba(99, 102, 241, 0.35) !important;
+}
+
+html.light .glass-card-interactive:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px -8px rgba(0, 0, 0, 0.08), 0 0 16px -4px rgba(99, 102, 241, 0.15) !important;
+  border-color: rgba(99, 102, 241, 0.4) !important;
+}
+
+/* Action Bars & Quick Sample Box */
+html.light div.from-amber-950\/20 {
+  background: linear-gradient(to right, rgba(254, 243, 199, 0.6), rgba(255, 255, 255, 0.95), rgba(224, 231, 255, 0.6)) !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+}
+
+/* General Text Overrides for Light Mode */
+html.light .text-slate-100,
+html.light .text-slate-200 {
+  color: #0f172a !important;
+}
+
+html.light .text-slate-300 {
+  color: #334155 !important;
+}
+
+html.light .text-slate-400 {
+  color: #64748b !important;
+}
+
+html.light .text-slate-500 {
+  color: #64748b !important;
+}
+
+html.light .border-slate-800,
+html.light .border-slate-700 {
+  border-color: #e2e8f0 !important;
+}
+
+html.light .bg-slate-900,
+html.light .bg-slate-950 {
+  background-color: #ffffff !important;
+}
+
+html.light .bg-slate-800 {
+  background-color: #f1f5f9 !important;
+  color: #334155 !important;
+}
+
+html.light .bg-slate-800\/50,
+html.light .bg-slate-900\/50 {
+  background-color: rgba(248, 250, 252, 0.85) !important;
+}
+
+/* Tables in Light Mode */
+html.light .styled-table th {
+  color: #475569 !important;
+  background-color: #f8fafc !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+html.light .styled-table td {
+  border-bottom: 1px solid #f1f5f9 !important;
+  color: #1e293b;
+}
+
+html.light .styled-table tr:hover {
+  background-color: rgba(241, 245, 249, 0.85) !important;
+}
+
+html.light .styled-table tr:hover td {
+  color: #0f172a !important;
+}
+
+html.light .badge-source {
+  background: rgba(100, 116, 139, 0.1) !important;
+  color: #475569 !important;
+  border-color: rgba(100, 116, 139, 0.25) !important;
+}
+
+/* Inputs, Modals & Dropdowns in Light Mode */
+html.light input,
+html.light textarea {
+  color: #0f172a !important;
+}
+
+html.light input::placeholder,
+html.light textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+html.light .modal-box {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.2) !important;
+}
+
+html.light .modal-box .bg-slate-800,
+html.light .modal-box .bg-slate-900 {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+html.light .modal-box .text-white {
+  color: #0f172a !important;
+}
+
+/* Toast in Light Mode */
+html.light #toast {
+  background-color: rgba(255, 255, 255, 0.98) !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12) !important;
+}
+
+/* Scrollbars in Light Mode */
+html.light ::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+html.light ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+html.light ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Footer in Light Mode */
+html.light footer {
+  background-color: #ffffff !important;
+  border-top-color: #e2e8f0 !important;
+  color: #64748b !important;
+}
+
+html.light footer .text-slate-200 {
+  color: #0f172a !important;
+}
+
+/* Auth Card in Light Mode */
+html.light #auth-card {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.15) !important;
+}
+
+html.light #auth-card .text-white {
+  color: #0f172a !important;
+}
+
+html.light #auth-card .bg-slate-800 {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
