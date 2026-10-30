@@ -80,9 +80,15 @@ async function cloudFetchTransactions() {
   const client = getSupabase();
   if (!client) return null;
 
+  // Always scope to the currently authenticated user so that
+  // logging in from a new device only loads THAT user's data.
+  const user = await cloudGetCurrentUser();
+  if (!user) return [];
+
   const { data, error } = await client
     .from("transactions")
     .select("*")
+    .eq("user_id", user.id)
     .order("date", { ascending: false });
 
   if (error) {

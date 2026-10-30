@@ -547,15 +547,22 @@ async function syncFromCloud() {
   if (!window.isSupabaseConfigured || !window.isSupabaseConfigured()) return;
   try {
     const cloudTxns = await window.cloudFetchTransactions();
-    if (cloudTxns && cloudTxns.length > 0) {
+    // Always apply the cloud result — even if empty — so a new device
+    // never shows stale localStorage data that belongs to another session.
+    if (cloudTxns !== null) {
       state.transactions = cloudTxns;
       saveToStorage();
       populateSourceSelect();
       updateDashboard();
-      showToast(`Loaded ${cloudTxns.length} transactions from Supabase Cloud`, "info");
+      if (cloudTxns.length > 0) {
+        showToast(`Loaded ${cloudTxns.length} transactions from Supabase Cloud`, "info");
+      } else {
+        showToast("Dashboard ready. Upload a bank statement to get started.", "info");
+      }
     }
   } catch (err) {
     console.warn("Cloud sync note:", err);
+    showToast("Could not load cloud data. Check your connection.", "error");
   }
 }
 
