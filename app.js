@@ -105,7 +105,10 @@ const DEFAULT_RULES = [
   { id: 39, pattern: "VEGETABLE|VEG|SABZI|SABZ|MILK|DHOOD|DUDDU|GROCERY|GROCER|KIRANA|DUKAN", cleanMerchant: "Groceries", category: "Groceries", type: "regex" },
   { id: 40, pattern: "INDOLE|RESTAUR|BIRYANI|DOSA|BURGER|PIZZA|NOODLE", cleanMerchant: "Restaurant", category: "Food & Dining", type: "regex" },
   { id: 41, pattern: "DBT|OPMS|TSCSC|SCHOLARSHIP|SUBSIDY|NBCUA1B", cleanMerchant: "DBT Govt Transfer", category: "Income", type: "regex" },
-  { id: 42, pattern: "GYM|FITNESS|WORKOUT", cleanMerchant: "Gym Membership", category: "Health & Wellness", type: "regex" }
+  { id: 42, pattern: "GYM|FITNESS|WORKOUT", cleanMerchant: "Gym Membership", category: "Health & Wellness", type: "regex" },
+  { id: 43, pattern: "RAGHAVEN|RAGHAVAN|RAGHVENDRA|LANDLORD|HOUSE RENT|MAKAN", cleanMerchant: "Rent Payment", category: "Utilities & Bills", type: "regex" },
+  { id: 44, pattern: "HARIOM|HARIOME", cleanMerchant: "Hariom", category: "Personal & Transfers", type: "regex" },
+  { id: 45, pattern: "JUGAL|KANHAIYA|PUNEET|SAUBHAG|SATYANAR|SOURABH|SAURABH|RAJESH", cleanMerchant: "Personal Transfer", category: "Personal & Transfers", type: "regex" }
 ];
 
 const CATEGORY_COLORS = {
@@ -671,7 +674,7 @@ function classifyDescription(rawDescription, credit = 0) {
     drCr = upiMatch[1].toUpperCase();
     upiEntity = upiMatch[3] ? upiMatch[3].trim() : "";
     const rawRemark = upiMatch[6] ? upiMatch[6].trim() : "";
-    const isNoiseRemark = !rawRemark || /^(PAYME|UPI|NO\s*R|NO\s*RE|NO\s*REMARK|NA|NONE|N\/A|PAY|PAYMENT|OK|TRF|TRANSFER)$/i.test(rawRemark) || /^\d+$/.test(rawRemark);
+    const isNoiseRemark = !rawRemark || /^(PAYME?T?|UPI|NO\s*R|NO\s*RE|NO\s*REMARK|NA|NONE|N\/A|PAY|PAYMENT|OK|TRF|TRANSFER|NEFT|IMPS|RTGS)$/i.test(rawRemark) || /^\d+$/.test(rawRemark) || /^(SANJIVANI|NAGAR|COLONY|SECTOR|PHASE|WARD)$/i.test(rawRemark);
     upiRemark = isNoiseRemark ? "" : rawRemark;
   }
 
@@ -705,8 +708,9 @@ function classifyDescription(rawDescription, credit = 0) {
   const textToClassify = isUpi ? (upiRemark ? `${upiEntity} ${upiRemark}` : upiEntity) : cleanMerchant;
   const cleanInput = textToClassify.toUpperCase();
 
-  // 5. User-Defined Rules (evaluated strictly against the merchant name)
-  for (const rule of state.rules) {
+  // 5. Rules evaluation — check both DEFAULT_RULES and user-defined rules
+  const allRules = [...DEFAULT_RULES, ...state.rules];
+  for (const rule of allRules) {
     if (isUpi && (rule.pattern === "PAYTM" || rule.pattern === "PHONEPE|PHONE PE")) {
       continue;
     }
@@ -2216,6 +2220,23 @@ function extractTransactionsFromPdfText(text, filename) {
       }
     }
 
+    // ── Cross-validate DR/CR direction vs parsed amounts ──
+    // SBI PDF: if narration says UPI/DR but parser found credit instead of debit
+    // (can happen when Pattern C fires on a debit whose layout looks like "- - AMT BAL"),
+    // swap them to match the actual transaction direction.
+    if (/UPI\/DR/i.test(combined) && credit > 0 && debit === 0) {
+      debit = credit;
+      credit = 0;
+    } else if (/UPI\/CR/i.test(combined) && debit > 0 && credit === 0) {
+      credit = debit;
+      debit = 0;
+    }
+    // Also apply for WDL TFR (withdrawal) — if narration says WDL TFR and credit is set, swap
+    if (/^WDL\s+TFR/i.test(combined) && credit > 0 && debit === 0) {
+      debit = credit;
+      credit = 0;
+    }
+
     // ── Extract date from first date-like token ──
     let dateStr = "";
     const dMatch = combined.match(/(\d{2}[-/]\d{2}[-/]\d{2,4})/);
@@ -2238,6 +2259,7 @@ function extractTransactionsFromPdfText(text, filename) {
         !/\bAT\s+\d{4,}\b/.test(l) &&
         !/^(WDL|DEP)\s+TFR/i.test(l) &&
         !/^(KARMETA|BALANCE|Page\s*no)/i.test(l) &&
+        !/^(SANJIVANI|NAGAR|COLONY|SECTOR|PHASE)/i.test(l) &&
         !NOISE.test(l)
       );
       rawNarration = narLines.join(" ").trim() || "BANK TXN";
@@ -2914,7 +2936,9 @@ async function aiCategorizeAllTransactions() {
     return;
   }
   const miscTxns = state.transactions.filter(t => {
-    if (Number(t.credit) > 0 && t.category !== "Income") return true;
+    // Only include debit transactions that haven't been categorized yet.
+    // Credit transactions are Income by definition — never send to AI batch.
+    if (Number(t.credit) > 0) return false;
     return !t.category || t.category === "Miscellaneous";
   });
   if (miscTxns.length === 0) {
@@ -2928,12 +2952,8 @@ async function aiCategorizeAllTransactions() {
 
   try {
     for (let txn of state.transactions) {
-      // 1. Any incoming credit/deposit is strictly Income - never overwrite with an expense
+      // 1. Safety net: skip credits (miscTxns filter should have excluded them already)
       if (Number(txn.credit) > 0) {
-        if (txn.category !== "Income") {
-          txn.category = "Income";
-          updatedCount++;
-        }
         continue;
       }
       // 2. Uncategorized debit expenses
