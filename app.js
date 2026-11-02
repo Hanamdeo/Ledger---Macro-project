@@ -2913,7 +2913,10 @@ async function aiCategorizeAllTransactions() {
     showToast("AI engine is not configured in supabase-config.js.", "error");
     return;
   }
-  const miscTxns = state.transactions.filter(t => !t.category || t.category === "Miscellaneous" || t.category === "Personal & Transfers");
+  const miscTxns = state.transactions.filter(t => {
+    if (Number(t.credit) > 0 && t.category !== "Income") return true;
+    return !t.category || t.category === "Miscellaneous";
+  });
   if (miscTxns.length === 0) {
     showToast("All transactions are already categorized!", "info");
     return;
@@ -2925,7 +2928,16 @@ async function aiCategorizeAllTransactions() {
 
   try {
     for (let txn of state.transactions) {
-      if (!txn.category || txn.category === "Miscellaneous" || txn.category === "Personal & Transfers") {
+      // 1. Any incoming credit/deposit is strictly Income - never overwrite with an expense
+      if (Number(txn.credit) > 0) {
+        if (txn.category !== "Income") {
+          txn.category = "Income";
+          updatedCount++;
+        }
+        continue;
+      }
+      // 2. Uncategorized debit expenses
+      if (!txn.category || txn.category === "Miscellaneous") {
         try {
           const aiCat = await window.aiCategorize(txn.description || txn.raw_description || "");
           if (aiCat && aiCat !== "Miscellaneous") {

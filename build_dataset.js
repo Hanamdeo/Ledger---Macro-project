@@ -162,7 +162,14 @@ const LEXICON = {
     "Sent to Rahul Sharma", "Sent to Priya Verma", "Sent to Amit Kumar", "Peer to Peer UPI Transfer",
     "Family Emergency Fund Support", "Return Borrowed Money", "Birthday Gift Cash Transfer", "Wedding Gift Shagun Envelope",
     "Self Account Bank Transfer", "Transfer to HDFC Savings Account", "Transfer to SBI Account", "ICICI Bank Self Transfer",
-    "Paytm Wallet Top Up", "PhonePe Wallet Balance Load"
+    "Paytm Wallet Top Up", "PhonePe Wallet Balance Load",
+    "UPI to Sourabh", "Sent to Sourabh", "Sourabh UPI P2P", "Transfer from Sourabh",
+    "UPI to Jugal", "Sent to Jugal", "Jugal Personal Transfer",
+    "UPI to Kanhaiya", "Sent to Kanhaiya", "Kanhaiya Peer Transfer",
+    "UPI to Puneeth", "Sent to Puneeth", "Puneeth Split Share",
+    "UPI to Saubhagy", "Sent to Saubhagy", "Saubhagy UPI Transfer",
+    "UPI to Satyanar", "Sent to Satyanar", "Satyanarayan Transfer",
+    "UPI to Rajesh", "Sent to Rajesh", "Rajesh Friend Transfer"
   ],
   "Miscellaneous": [
     "Unknown Narration POS", "General Store Cash POS", "Cash Withdrawal ATM", "ATM Cash WDL Transaction",
