@@ -2059,7 +2059,7 @@ function handlePdfImport(file) {
       const extractedRecords = extractTransactionsFromPdfText(allText, file.name);
 
       if (logOutput) {
-        logOutput.innerHTML += `<span class="text-emerald-400 font-bold">[4/4] Successfully imported ${extractedRecords.length} clean transactions into SQLite Ledger!</span><br>`;
+        logOutput.innerHTML += `<span class="text-emerald-400 font-bold">[4/4] Successfully imported ${extractedRecords.length} clean transactions into Supabase Cloud Ledger!</span><br>`;
       }
 
       saveToStorage();
@@ -2371,7 +2371,7 @@ function handleCsvImport(file) {
       }
 
       if (logOutput) {
-        logOutput.innerHTML += `<span class="text-emerald-400 font-bold">[4/4] Successfully imported ${importedCount} clean transactions into SQLite table!</span><br>`;
+        logOutput.innerHTML += `<span class="text-emerald-400 font-bold">[4/4] Successfully imported ${importedCount} clean transactions into Supabase Cloud table!</span><br>`;
       }
       saveToStorage();
       populateSourceSelect();
@@ -2465,7 +2465,7 @@ function simulateEncryptedPDF() {
       });
 
       if (logOutput) {
-        logOutput.innerHTML += `<span class="text-emerald-400 font-bold">[4/4] Successfully decrypted and imported 6 clean transactions into SQLite Ledger!</span><br>`;
+        logOutput.innerHTML += `<span class="text-emerald-400 font-bold">[4/4] Successfully decrypted and imported 6 clean transactions into Supabase Cloud Ledger!</span><br>`;
       }
       saveToStorage();
       populateSourceSelect();
@@ -2563,7 +2563,7 @@ function simulateParser(type) {
 
     if (logOutput) {
       logOutput.innerHTML += `
-        <span class="text-emerald-400 font-mono font-bold">[4/4] Parsing Complete! Processed and committed ${sampleParsedRecords.length} records into SQLite Transaction Table.</span>
+        <span class="text-emerald-400 font-mono font-bold">[4/4] Parsing Complete! Processed and committed ${sampleParsedRecords.length} records into Supabase Transaction Table.</span>
       `;
     }
 
@@ -2741,7 +2741,7 @@ function exportData(type) {
     showToast("Exported transactions to JSON!", "success");
 
   } else if (type === "sql") {
-    let sql = `-- SQLite Database Dump: Personal Finance Analytics\n`;
+    let sql = `-- SQL Database Dump: Personal Finance Analytics\n`;
     sql += `-- Generated on ${new Date().toISOString()}\n\n`;
     sql += `CREATE TABLE IF NOT EXISTS transactions (\n`;
     sql += `    transaction_id TEXT PRIMARY KEY,\n`;
@@ -2761,8 +2761,8 @@ function exportData(type) {
     });
 
     const sqlContent = "data:text/plain;charset=utf-8," + encodeURIComponent(sql);
-    downloadFile(sqlContent, `Personal_Finance_SQLite_Dump_${new Date().toISOString().substring(0, 10)}.sql`);
-    showToast("Exported SQLite database script!", "success");
+    downloadFile(sqlContent, `Personal_Finance_SQL_Dump_${new Date().toISOString().substring(0, 10)}.sql`);
+    showToast("Exported SQL database script!", "success");
   }
 }
 
