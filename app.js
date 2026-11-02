@@ -334,6 +334,17 @@ function renderAuthenticatedUI(user) {
       .toUpperCase();
     if (headerAvatar) headerAvatar.textContent = initials || "HN";
     if (headerName) headerName.textContent = displayName;
+
+    // Toggle demo-only elements based on user account type
+    const isDemo = Boolean(user.isDemo || user.email === "demo@ledger.finance" || user.username === "demo");
+    const demoElements = document.querySelectorAll(".demo-only-element");
+    demoElements.forEach(el => {
+      if (isDemo) {
+        el.classList.remove("hidden");
+      } else {
+        el.classList.add("hidden");
+      }
+    });
   }
 }
 
@@ -469,10 +480,14 @@ async function handleSignUpSubmit(event) {
         id: user.id,
         name: name,
         email: email,
-        isCloud: true
+        isCloud: true,
+        isDemo: false
       };
       localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(appUser));
+      state.transactions = [];
+      saveToStorage();
       renderAuthenticatedUI(appUser);
+      updateDashboard();
       showToast(`Account created in Supabase! Welcome, ${name}!`, "success");
       nameInput.value = "";
       emailInput.value = "";
@@ -508,8 +523,10 @@ async function handleSignUpSubmit(event) {
   users.push(newUser);
   localStorage.setItem(AUTH_USERS_KEY, JSON.stringify(users));
   localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(newUser));
-
+  state.transactions = [];
+  saveToStorage();
   renderAuthenticatedUI(newUser);
+  updateDashboard();
   showToast(`Account created! Welcome to Ledger, ${name}!`, "success");
 
   nameInput.value = "";
@@ -520,9 +537,10 @@ async function handleSignUpSubmit(event) {
 
 function loginAsDemoUser() {
   const demoUser = {
-    name: "Harshit Namdeo",
-    email: "harshit@ledger.finance",
-    username: "harshit",
+    name: "Demo Evaluator",
+    email: "demo@ledger.finance",
+    username: "demo",
+    isDemo: true,
     createdAt: "2026-08-01"
   };
   localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(demoUser));
@@ -539,6 +557,9 @@ async function handleSignOut() {
     }
   }
   localStorage.removeItem(AUTH_SESSION_KEY);
+  state.transactions = [];
+  saveToStorage();
+  updateDashboard();
   renderUnauthenticatedUI();
   showToast("You have been signed out.", "info");
 }
@@ -641,17 +662,17 @@ function saveToStorage() {
   localStorage.setItem("pf_transactions", JSON.stringify(state.transactions));
   localStorage.setItem("pf_rules", JSON.stringify(state.rules));
 
-  // Sync to Supabase Cloud if signed in
+  // Sync to Supabase Cloud if signed in (authenticated cloud user)
   if (window.isSupabaseConfigured && window.isSupabaseConfigured() && window.cloudSaveTransactions) {
     try {
       const sessionUser = JSON.parse(localStorage.getItem(AUTH_SESSION_KEY) || "null");
-      if (sessionUser && sessionUser.isCloud) {
+      if (sessionUser && (sessionUser.isCloud || !sessionUser.isDemo)) {
         window.cloudSaveTransactions(state.transactions).catch(err => {
-          console.warn("Background cloud sync note:", err);
+          console.warn("Background Supabase sync error:", err);
         });
       }
     } catch (e) {
-      // ignore
+      console.warn("Supabase save error:", e);
     }
   }
 }
@@ -1653,6 +1674,14 @@ function renderCategoryBreakdownList(transactions) {
 function deleteTransaction(id) {
   if (confirm(`Are you sure you want to delete transaction ${id}?`)) {
     state.transactions = state.transactions.filter(t => t.transaction_id !== id);
+    if (window.isSupabaseConfigured && window.isSupabaseConfigured() && window.cloudDeleteTransaction) {
+      try {
+        const sessionUser = JSON.parse(localStorage.getItem(AUTH_SESSION_KEY) || "null");
+        if (sessionUser && (sessionUser.isCloud || !sessionUser.isDemo)) {
+          window.cloudDeleteTransaction(id).catch(err => console.warn("Supabase delete error:", err));
+        }
+      } catch (e) {}
+    }
     saveToStorage();
     updateDashboard();
     showToast(`Transaction ${id} deleted successfully.`, "info");
@@ -2876,9 +2905,20 @@ function executeHardReset() {
   // 1. Wipe in-memory transactions
   state.transactions = [];
   
-  // 2. Clear browser localStorage
+  // 2. Clear Supabase Cloud transactions if authenticated
+  if (window.isSupabaseConfigured && window.isSupabaseConfigured() && window.cloudClearAllTransactions) {
+    try {
+      const sessionUser = JSON.parse(localStorage.getItem(AUTH_SESSION_KEY) || "null");
+      if (sessionUser && (sessionUser.isCloud || !sessionUser.isDemo)) {
+        window.cloudClearAllTransactions().catch(err => console.warn("Supabase clear error:", err));
+      }
+    } catch (e) {}
+  }
+
+  // 3. Clear browser localStorage
+  localStorage.removeItem("pf_transactions");
+  localStorage.setItem("pf_transactions", JSON.stringify([]));
   localStorage.removeItem("ledger_transactions");
-  localStorage.setItem("ledger_transactions", JSON.stringify([]));
   
   // 3. Reset pagination & filters
   state.pagination.currentPage = 1;
