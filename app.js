@@ -690,11 +690,34 @@ function classifyDescription(rawDescription) {
     const parts = rawDescription.split("/");
     const drCr = parts[1].toUpperCase();
     const entity = parts[3] ? parts[3].trim() : "";
-    const remark = parts.length >= 7 ? parts[6].trim() : (parts.length >= 6 ? parts[5].trim() : "");
-    const cleanName = remark && remark.length > 1 && !/^(PAYME|UPI|NO RE)$/i.test(remark)
-      ? `${entity} (${remark})`
-      : (entity || "UPI Transfer");
-    const cat = drCr === "CR" ? "Income" : "Personal & Transfers";
+    const rawRemark = parts.length >= 7 ? parts[6].trim() : "";
+    const isNoiseRemark = !rawRemark || /^(PAYME|UPI|NO\s*R|NO\s*RE|NO\s*REMARK|NA|NONE|N\/A|PAY|PAYMENT|OK|TRF|TRANSFER)$/i.test(rawRemark) || /^\d+$/.test(rawRemark);
+    const remark = isNoiseRemark ? "" : rawRemark;
+
+    let cleanName = entity;
+    if (entity.toUpperCase() === "UPILITE") {
+      cleanName = "UPI Lite";
+    } else if (remark) {
+      cleanName = `${entity} (${remark})`;
+    } else if (!cleanName) {
+      cleanName = "UPI Transfer";
+    }
+
+    let cat = drCr === "CR" ? "Income" : "Personal & Transfers";
+    if (cleanName === "UPI Lite") {
+      cat = "Personal & Transfers";
+    } else if (typeof window !== "undefined" && window.mlCategorize) {
+      try {
+        const mlPrediction = window.mlCategorize(remark || entity);
+        if (mlPrediction && mlPrediction !== "Miscellaneous" && mlPrediction !== "Personal & Transfers") {
+          cat = mlPrediction;
+        }
+      } catch (e) {}
+    } else if (typeof window !== "undefined" && window.fallbackSmartCategorize) {
+      const fb = window.fallbackSmartCategorize(remark || entity);
+      if (fb && fb !== "Miscellaneous") cat = fb;
+    }
+
     return {
       cleanMerchant: cleanName,
       category: cat,
@@ -707,9 +730,19 @@ function classifyDescription(rawDescription) {
     .split(/[-/*_]/)[0]
     .trim();
 
+  let finalCategory = "Miscellaneous";
+  if (typeof window !== "undefined" && window.mlCategorize) {
+    try {
+      const mlCat = window.mlCategorize(rawDescription);
+      if (mlCat) finalCategory = mlCat;
+    } catch(e) {}
+  } else if (typeof window !== "undefined" && window.fallbackSmartCategorize) {
+    finalCategory = window.fallbackSmartCategorize(rawDescription) || "Miscellaneous";
+  }
+
   return {
     cleanMerchant: cleaned || "MISCELLANEOUS",
-    category: (typeof window !== "undefined" && window.fallbackSmartCategorize) ? (window.fallbackSmartCategorize(rawDescription) || "Miscellaneous") : "Miscellaneous",
+    category: finalCategory,
     rule: null
   };
 }
@@ -1986,7 +2019,7 @@ function handlePdfImport(file) {
 
         // Sort Y buckets ASCENDING — PDF.js origin is bottom-left, so lower Y = top of page
         // Ascending sort gives correct top-to-bottom reading order
-        const sortedYs = [...lineMap.keys()].sort((a, b) => a - b);
+        const sortedYs = [...lineMap.keys()].sort((a, b) => b - a);
 
         for (const y of sortedYs) {
           const rowItems = lineMap.get(y).sort((a, b) => a.x - b.x);
@@ -2067,19 +2100,29 @@ function extractTransactionsFromPdfText(text, filename) {
   // --------------------------------------------------------
   blocks.forEach((block, blockIdx) => {
     // ── Stitch split UPI narration lines ──
-    // SBI splits "UPI/DR/123456/PRAMOD" and "U/YESB/paytm/Remark" onto two rows.
-    // Detect & join them before processing.
+    // SBI splits "UPI/DR/123456/PRAMOD" and "U/YESB/paytm/Remark" onto multiple rows.
+    // Detect & stitch all continuation fragments before processing.
     const stitchedLines = [];
     for (let li = 0; li < block.lines.length; li++) {
-      const line = block.lines[li];
-      const next = block.lines[li + 1] || "";
-      // A line starting with UPI/ may be continued if next line looks like a fragment (no date, no keyword, short)
-      if (/^UPI\//i.test(line) && next && !isDateLine(next) && !/^(WDL|DEP)\s+TFR/i.test(next) && !/^\d{9,}/.test(next) && next.length < 35) {
-        stitchedLines.push(line + next);
-        li++; // skip next
-      } else {
-        stitchedLines.push(line);
+      let line = block.lines[li];
+      if (/UPI\/(DR|CR)\//i.test(line)) {
+        while (li + 1 < block.lines.length) {
+          const next = block.lines[li + 1];
+          const isContinuation = !isDateLine(next) &&
+            !/^(WDL|DEP)\s+TFR/i.test(next) &&
+            !/^\d{10,}\s+AT\s+\d+/i.test(next) &&
+            !/\bAT\s+\d{4,}\b/i.test(next) &&
+            !/^\d+[\d,]*\.\d{2}$/.test(next);
+
+          if (isContinuation) {
+            line = line + next;
+            li++;
+          } else {
+            break;
+          }
+        }
       }
+      stitchedLines.push(line);
     }
 
     const combined = stitchedLines.join(" ");
@@ -2158,20 +2201,11 @@ function extractTransactionsFromPdfText(text, filename) {
     dateStr = (dMatch && dMatch[1]) || (iMatch && iMatch[1]) || "";
 
     // ── Extract narration ──
-    // Prefer stitched UPI line; fall back to non-noise lines
-    let rawDesc = "";
-    const upiLine = stitchedLines.find(l => /^UPI\//i.test(l));
+    // For UPI, keep the full raw narration string for auditing, while classifyDescription extracts clean merchant
+    const upiLine = stitchedLines.find(l => /UPI\/(DR|CR)\//i.test(l));
+    let rawNarration = "";
     if (upiLine) {
-      // UPI/DR|CR/refnum/ENTITY/BANK/vpa/remark
-      const parts = upiLine.split("/");
-      if (parts.length >= 4) {
-        const entity  = parts[3].trim();
-        const remarks = parts.length >= 7 ? parts[6].trim()
-                      : parts.length >= 6 ? parts[5].trim() : "";
-        rawDesc = (remarks && remarks.length > 1) ? `${entity} (${remarks})` : entity;
-      } else {
-        rawDesc = upiLine;
-      }
+      rawNarration = upiLine;
     } else {
       // Non-UPI: use narration lines (skip date lines, amounts, ref numbers, branch names)
       const narLines = stitchedLines.filter(l =>
@@ -2184,13 +2218,13 @@ function extractTransactionsFromPdfText(text, filename) {
         !/^(KARMETA|BALANCE|Page\s*no)/i.test(l) &&
         !NOISE.test(l)
       );
-      rawDesc = narLines.join(" ").trim() || "BANK TXN";
+      rawNarration = narLines.join(" ").trim() || "BANK TXN";
     }
 
-    rawDesc = rawDesc.replace(/\s+/g, " ").trim();
-    if (rawDesc.length < 2) rawDesc = "BANK TXN";
+    rawNarration = rawNarration.replace(/\s+/g, " ").trim();
+    if (rawNarration.length < 2) rawNarration = "BANK TXN";
 
-    const classification = classifyDescription(rawDesc);
+    const classification = classifyDescription(rawNarration);
     const category = credit > 0 && (classification.category === "Miscellaneous" || classification.category === "Personal & Transfers")
       ? "Income"
       : classification.category;
@@ -2198,7 +2232,7 @@ function extractTransactionsFromPdfText(text, filename) {
     const newTxn = {
       transaction_id: `TXN-PDF-${Date.now().toString().slice(-6)}-${blockIdx + 1}`,
       date: standardizeDateStr(dateStr),
-      raw_description: rawDesc,
+      raw_description: rawNarration,
       description: classification.cleanMerchant,
       category: category,
       debit: debit,
