@@ -99,16 +99,13 @@ const DEFAULT_RULES = [
   { id: 31, pattern: "STIPEND|TCS", cleanMerchant: "INTERNSHIP STIPEND", category: "Income", type: "regex" },
   { id: 32, pattern: "UPWORK", cleanMerchant: "UPWORK FREELANCE", category: "Income", type: "contains" },
   { id: 33, pattern: "INTEREST|INT CR|INTEREST CREDIT", cleanMerchant: "BANK INTEREST", category: "Income", type: "regex" },
-  { id: 34, pattern: "PHONEPE|PHONE PE", cleanMerchant: "PhonePe", category: "Miscellaneous", type: "regex" },
   { id: 35, pattern: "RENT|rent", cleanMerchant: "Rent Payment", category: "Utilities & Bills", type: "contains" },
   { id: 36, pattern: "SALARY|SALRY|SAL CR", cleanMerchant: "Salary Credit", category: "Income", type: "regex" },
-  { id: 37, pattern: "PAYTM", cleanMerchant: "PayTM", category: "Miscellaneous", type: "contains" },
   { id: 38, pattern: "MAGGI|CHAI|COFFEE|TEA|JUICE|FOOD|SNACK|DHABA", cleanMerchant: "Food Purchase", category: "Food & Dining", type: "regex" },
   { id: 39, pattern: "VEGETABLE|VEG|SABZI|SABZ|MILK|DHOOD|DUDDU|GROCERY|GROCER|KIRANA|DUKAN", cleanMerchant: "Groceries", category: "Groceries", type: "regex" },
   { id: 40, pattern: "INDOLE|RESTAUR|BIRYANI|DOSA|BURGER|PIZZA|NOODLE", cleanMerchant: "Restaurant", category: "Food & Dining", type: "regex" },
   { id: 41, pattern: "DBT|OPMS|TSCSC|SCHOLARSHIP|SUBSIDY|NBCUA1B", cleanMerchant: "DBT Govt Transfer", category: "Income", type: "regex" },
-  { id: 42, pattern: "GYM|FITNESS|WORKOUT", cleanMerchant: "Gym Membership", category: "Health & Wellness", type: "regex" },
-  { id: 43, pattern: "VISHAL|ARYAN|DIVYANSH|TEJSHWI|SHOURYA|GUDDI|MANOJ|GOVIND|PRAMOD|SATYANAR", cleanMerchant: "Personal Transfer", category: "Personal & Transfers", type: "regex" }
+  { id: 42, pattern: "GYM|FITNESS|WORKOUT", cleanMerchant: "Gym Membership", category: "Health & Wellness", type: "regex" }
 ];
 
 const CATEGORY_COLORS = {
@@ -657,13 +654,62 @@ function saveToStorage() {
 }
 
 // Rule Normalizer & Categorizer Engine
-function classifyDescription(rawDescription) {
+function classifyDescription(rawDescription, credit = 0) {
   if (!rawDescription) {
     return { cleanMerchant: "UNKNOWN", category: "Miscellaneous", rule: null };
   }
-  const cleanInput = rawDescription.toUpperCase();
 
+  // 1. UPI Narration Decomposition
+  let isUpi = false;
+  let drCr = Number(credit) > 0 ? "CR" : "DR";
+  let upiEntity = "";
+  let upiRemark = "";
+
+  const upiMatch = rawDescription.match(/UPI\/(DR|CR)\/([^\/]+)\/([^\/]+)(?:\/([^\/]+))?(?:\/([^\/]+))?(?:\/([^\/]+))?/i);
+  if (upiMatch) {
+    isUpi = true;
+    drCr = upiMatch[1].toUpperCase();
+    upiEntity = upiMatch[3] ? upiMatch[3].trim() : "";
+    const rawRemark = upiMatch[6] ? upiMatch[6].trim() : "";
+    const isNoiseRemark = !rawRemark || /^(PAYME|UPI|NO\s*R|NO\s*RE|NO\s*REMARK|NA|NONE|N\/A|PAY|PAYMENT|OK|TRF|TRANSFER)$/i.test(rawRemark) || /^\d+$/.test(rawRemark);
+    upiRemark = isNoiseRemark ? "" : rawRemark;
+  }
+
+  let cleanMerchant = "";
+  if (isUpi) {
+    if (upiEntity.toUpperCase() === "UPILITE") {
+      cleanMerchant = "UPI Lite";
+    } else if (upiRemark) {
+      cleanMerchant = `${upiEntity} (${upiRemark})`;
+    } else {
+      cleanMerchant = upiEntity || "UPI Transfer";
+    }
+  } else {
+    cleanMerchant = rawDescription
+      .replace(/^(UPI[-/]|POS[-/]|ACH[-/]|NEFT[-/]|BILLPAY[-/])/i, "")
+      .split(/[-/*_]/)[0]
+      .trim() || "MISCELLANEOUS";
+  }
+
+  // 2. Immediate Credit / Income Detection
+  if (Number(credit) > 0 || drCr === "CR") {
+    return { cleanMerchant, category: "Income", rule: null };
+  }
+
+  // 3. Immediate UPI Lite Detection
+  if (cleanMerchant === "UPI Lite") {
+    return { cleanMerchant: "UPI Lite", category: "Personal & Transfers", rule: null };
+  }
+
+  // 4. Target text for classification (merchant entity + remark, avoiding bank/VPA routing noise)
+  const textToClassify = isUpi ? (upiRemark ? `${upiEntity} ${upiRemark}` : upiEntity) : cleanMerchant;
+  const cleanInput = textToClassify.toUpperCase();
+
+  // 5. User-Defined Rules (evaluated strictly against the merchant name)
   for (const rule of state.rules) {
+    if (isUpi && (rule.pattern === "PAYTM" || rule.pattern === "PHONEPE|PHONE PE")) {
+      continue;
+    }
     let matched = false;
     if (rule.type === "regex") {
       try {
@@ -678,71 +724,47 @@ function classifyDescription(rawDescription) {
 
     if (matched) {
       return {
-        cleanMerchant: rule.cleanMerchant,
+        cleanMerchant: isUpi ? cleanMerchant : rule.cleanMerchant,
         category: rule.category,
         rule: rule
       };
     }
   }
 
-  // Fallback heuristic: clean up UPI / POS / ACH formats cleanly
-  if (/^UPI\/(DR|CR)\//i.test(rawDescription)) {
-    const parts = rawDescription.split("/");
-    const drCr = parts[1].toUpperCase();
-    const entity = parts[3] ? parts[3].trim() : "";
-    const rawRemark = parts.length >= 7 ? parts[6].trim() : "";
-    const isNoiseRemark = !rawRemark || /^(PAYME|UPI|NO\s*R|NO\s*RE|NO\s*REMARK|NA|NONE|N\/A|PAY|PAYMENT|OK|TRF|TRANSFER)$/i.test(rawRemark) || /^\d+$/.test(rawRemark);
-    const remark = isNoiseRemark ? "" : rawRemark;
-
-    let cleanName = entity;
-    if (entity.toUpperCase() === "UPILITE") {
-      cleanName = "UPI Lite";
-    } else if (remark) {
-      cleanName = `${entity} (${remark})`;
-    } else if (!cleanName) {
-      cleanName = "UPI Transfer";
-    }
-
-    let cat = drCr === "CR" ? "Income" : "Personal & Transfers";
-    if (cleanName === "UPI Lite") {
-      cat = "Personal & Transfers";
-    } else if (typeof window !== "undefined" && window.mlCategorize) {
-      try {
-        const mlPrediction = window.mlCategorize(remark || entity);
-        if (mlPrediction && mlPrediction !== "Miscellaneous" && mlPrediction !== "Personal & Transfers") {
-          cat = mlPrediction;
-        }
-      } catch (e) {}
-    } else if (typeof window !== "undefined" && window.fallbackSmartCategorize) {
-      const fb = window.fallbackSmartCategorize(remark || entity);
-      if (fb && fb !== "Miscellaneous") cat = fb;
-    }
-
-    return {
-      cleanMerchant: cleanName,
-      category: cat,
-      rule: null
-    };
-  }
-
-  let cleaned = rawDescription
-    .replace(/^(UPI[-/]|POS[-/]|ACH[-/]|NEFT[-/]|BILLPAY[-/])/i, "")
-    .split(/[-/*_]/)[0]
-    .trim();
-
-  let finalCategory = "Miscellaneous";
-  if (typeof window !== "undefined" && window.mlCategorize) {
+  // 6. In-Browser Statistical ML Classifier (MultinomialNB 97.4% accuracy)
+  if (typeof window !== "undefined" && window.mlCategorizeDetailed) {
     try {
-      const mlCat = window.mlCategorize(rawDescription);
-      if (mlCat) finalCategory = mlCat;
-    } catch(e) {}
-  } else if (typeof window !== "undefined" && window.fallbackSmartCategorize) {
-    finalCategory = window.fallbackSmartCategorize(rawDescription) || "Miscellaneous";
+      const mlRes = window.mlCategorizeDetailed(textToClassify);
+      if (mlRes && mlRes.category && mlRes.category !== "Miscellaneous" && mlRes.confidence >= 0.40) {
+        return {
+          cleanMerchant,
+          category: mlRes.category,
+          rule: null,
+          mlConfidence: mlRes.confidence
+        };
+      }
+    } catch (e) {}
+  } else if (typeof window !== "undefined" && window.mlCategorize) {
+    try {
+      const mlCat = window.mlCategorize(textToClassify);
+      if (mlCat && mlCat !== "Miscellaneous") {
+        return { cleanMerchant, category: mlCat, rule: null };
+      }
+    } catch (e) {}
   }
 
+  // 7. Fallback Smart Heuristic
+  if (typeof window !== "undefined" && window.fallbackSmartCategorize) {
+    const fb = window.fallbackSmartCategorize(textToClassify);
+    if (fb && fb !== "Miscellaneous") {
+      return { cleanMerchant, category: fb, rule: null };
+    }
+  }
+
+  // 8. Default
   return {
-    cleanMerchant: cleaned || "MISCELLANEOUS",
-    category: finalCategory,
+    cleanMerchant,
+    category: isUpi ? "Personal & Transfers" : "Miscellaneous",
     rule: null
   };
 }
@@ -750,7 +772,7 @@ function classifyDescription(rawDescription) {
 // Re-categorize all transactions based on updated rules
 function reclassifyAllTransactions() {
   state.transactions = state.transactions.map(txn => {
-    const classification = classifyDescription(txn.raw_description || txn.description);
+    const classification = classifyDescription(txn.raw_description || txn.description, txn.credit);
     return {
       ...txn,
       description: classification.cleanMerchant,
@@ -2224,10 +2246,8 @@ function extractTransactionsFromPdfText(text, filename) {
     rawNarration = rawNarration.replace(/\s+/g, " ").trim();
     if (rawNarration.length < 2) rawNarration = "BANK TXN";
 
-    const classification = classifyDescription(rawNarration);
-    const category = credit > 0 && (classification.category === "Miscellaneous" || classification.category === "Personal & Transfers")
-      ? "Income"
-      : classification.category;
+    const classification = classifyDescription(rawNarration, credit);
+    const category = classification.category;
 
     const newTxn = {
       transaction_id: `TXN-PDF-${Date.now().toString().slice(-6)}-${blockIdx + 1}`,
@@ -2893,7 +2913,7 @@ async function aiCategorizeAllTransactions() {
     showToast("AI engine is not configured in supabase-config.js.", "error");
     return;
   }
-  const miscTxns = state.transactions.filter(t => !t.category || t.category === "Miscellaneous");
+  const miscTxns = state.transactions.filter(t => !t.category || t.category === "Miscellaneous" || t.category === "Personal & Transfers");
   if (miscTxns.length === 0) {
     showToast("All transactions are already categorized!", "info");
     return;
@@ -2905,7 +2925,7 @@ async function aiCategorizeAllTransactions() {
 
   try {
     for (let txn of state.transactions) {
-      if (!txn.category || txn.category === "Miscellaneous") {
+      if (!txn.category || txn.category === "Miscellaneous" || txn.category === "Personal & Transfers") {
         try {
           const aiCat = await window.aiCategorize(txn.description || txn.raw_description || "");
           if (aiCat && aiCat !== "Miscellaneous") {
