@@ -640,6 +640,20 @@ function initStorage() {
 function saveToStorage() {
   localStorage.setItem("pf_transactions", JSON.stringify(state.transactions));
   localStorage.setItem("pf_rules", JSON.stringify(state.rules));
+
+  // Sync to Supabase Cloud if signed in
+  if (window.isSupabaseConfigured && window.isSupabaseConfigured() && window.cloudSaveTransactions) {
+    try {
+      const sessionUser = JSON.parse(localStorage.getItem(AUTH_SESSION_KEY) || "null");
+      if (sessionUser && sessionUser.isCloud) {
+        window.cloudSaveTransactions(state.transactions).catch(err => {
+          console.warn("Background cloud sync note:", err);
+        });
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
 }
 
 // Rule Normalizer & Categorizer Engine
@@ -695,7 +709,7 @@ function classifyDescription(rawDescription) {
 
   return {
     cleanMerchant: cleaned || "MISCELLANEOUS",
-    category: "Miscellaneous",
+    category: (typeof window !== "undefined" && window.fallbackSmartCategorize) ? (window.fallbackSmartCategorize(rawDescription) || "Miscellaneous") : "Miscellaneous",
     rule: null
   };
 }
@@ -1993,6 +2007,9 @@ function handlePdfImport(file) {
       populateSourceSelect();
       updateDashboard();
       showToast(`Unlocked & imported ${extractedRecords.length} transactions from ${file.name}`, "success");
+      if (typeof aiCategorizeAllTransactions === "function") {
+        setTimeout(() => aiCategorizeAllTransactions(), 1000);
+      }
 
     } catch (err) {
       if (logOutput) {
@@ -2284,6 +2301,9 @@ function handleCsvImport(file) {
       populateSourceSelect();
       updateDashboard();
       showToast(`Imported ${importedCount} transactions from ${file.name}`, "success");
+      if (typeof aiCategorizeAllTransactions === "function") {
+        setTimeout(() => aiCategorizeAllTransactions(), 1000);
+      }
     }, 1500);
   };
   reader.readAsText(file);
@@ -2506,10 +2526,41 @@ function initModals() {
     }
     const classification = classifyDescription(val);
     if (previewClean) previewClean.textContent = classification.cleanMerchant;
-    if (previewCat) previewCat.textContent = classification.category;
+    if (previewCat) {
+      if (typeof window !== "undefined" && window.mlCategorizeDetailed) {
+        const mlInfo = window.mlCategorizeDetailed(val);
+        if (mlInfo && mlInfo.confidence >= 0.50 && mlInfo.category === classification.category && classification.category !== "Miscellaneous") {
+          previewCat.innerHTML = `<span>${classification.category}</span> <span class="text-[10px] text-emerald-400 font-mono font-bold">(${Math.round(mlInfo.confidence * 100)}% ML)</span>`;
+        } else {
+          previewCat.textContent = classification.category;
+        }
+      } else {
+        previewCat.textContent = classification.category;
+      }
+    }
+    rawInput.dataset.aiCategory = "";
+
+    // If local rule returns Miscellaneous, automatically ask AI with a 400ms debounce
+    if (classification.category === "Miscellaneous" && window.aiCategorize && val.trim().length >= 2) {
+      clearTimeout(window._aiModalDebounce);
+      if (previewCat) previewCat.innerHTML = '<span class="text-purple-400 animate-pulse">✨ AI classifying...</span>';
+      window._aiModalDebounce = setTimeout(async () => {
+        try {
+          const aiCat = await window.aiCategorize(val);
+          if (aiCat && aiCat !== "Miscellaneous" && rawInput.value.trim() === val.trim()) {
+            rawInput.dataset.aiCategory = aiCat;
+            if (previewCat) previewCat.innerHTML = `<span class="text-emerald-400 font-bold">✨ ${aiCat}</span>`;
+          } else if (rawInput.value.trim() === val.trim() && previewCat) {
+            previewCat.textContent = "Miscellaneous";
+          }
+        } catch (e) {
+          if (previewCat && rawInput.value.trim() === val.trim()) previewCat.textContent = "Miscellaneous";
+        }
+      }, 400);
+    }
   });
 
-  formAdd?.addEventListener("submit", (e) => {
+  formAdd?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const date = document.getElementById("add-txn-date").value;
     const raw = document.getElementById("add-txn-raw").value;
@@ -2518,6 +2569,24 @@ function initModals() {
     const source = document.getElementById("add-txn-source").value || "Manual_Entry";
 
     const classification = classifyDescription(raw);
+    let finalCategory = rawInput?.dataset?.aiCategory || classification.category;
+
+    // AI Categorization for unclassified or Miscellaneous transactions
+    if (finalCategory === "Miscellaneous" && window.aiCategorize) {
+      try {
+        const submitBtn = formAdd.querySelector("button[type='submit']");
+        const prevText = submitBtn ? submitBtn.textContent : "Add Transaction";
+        if (submitBtn) submitBtn.textContent = "AI Categorizing...";
+        showToast("Consulting AI to classify transaction...", "info");
+        const aiCat = await window.aiCategorize(raw);
+        if (aiCat && aiCat !== "Miscellaneous") {
+          finalCategory = aiCat;
+        }
+        if (submitBtn) submitBtn.textContent = prevText;
+      } catch (err) {
+        console.warn("AI categorization note:", err);
+      }
+    }
     const latestBal = state.transactions.length > 0 ? state.transactions[0].balance : 100000;
     const isCredit = type === "credit";
     const debitVal = isCredit ? 0 : amount;
@@ -2530,6 +2599,7 @@ function initModals() {
       raw_description: raw,
       description: classification.cleanMerchant,
       category: classification.category,
+      category: finalCategory,
       debit: debitVal,
       credit: creditVal,
       balance: newBal,
@@ -2540,9 +2610,12 @@ function initModals() {
     saveToStorage();
     populateSourceSelect();
     updateDashboard();
+    if (typeof window !== "undefined" && window.mlTrainOnSample) {
+      window.mlTrainOnSample(raw, finalCategory);
+    }
     modalAdd?.classList.add("hidden");
     formAdd.reset();
-    showToast(`Transaction added & auto-classified as "${classification.category}"!`, "success");
+    showToast(`Transaction added & auto-classified as "${finalCategory}"!`, "success");
   });
 
   // Close modals on clicking background backdrop
@@ -2777,5 +2850,75 @@ window.clearAllTransactions = clearAllTransactions;
 window.promptHardReset = promptHardReset;
 window.executeHardReset = executeHardReset;
 window.resetToDefaultData = resetToDefaultData;
+
+// AI Batch Categorizer for unclassified/Miscellaneous transactions
+let isBatchCategorizing = false;
+async function aiCategorizeAllTransactions() {
+  if (isBatchCategorizing) return;
+  if (!window.aiCategorize) {
+    showToast("AI engine is not configured in supabase-config.js.", "error");
+    return;
+  }
+  const miscTxns = state.transactions.filter(t => !t.category || t.category === "Miscellaneous");
+  if (miscTxns.length === 0) {
+    showToast("All transactions are already categorized!", "info");
+    return;
+  }
+
+  isBatchCategorizing = true;
+  showToast(`AI is categorizing ${miscTxns.length} transaction(s)...`, "info");
+  let updatedCount = 0;
+
+  try {
+    for (let txn of state.transactions) {
+      if (!txn.category || txn.category === "Miscellaneous") {
+        try {
+          const aiCat = await window.aiCategorize(txn.description || txn.raw_description || "");
+          if (aiCat && aiCat !== "Miscellaneous") {
+            txn.category = aiCat;
+            updatedCount++;
+          }
+        } catch (err) {
+          console.warn("AI error for", txn.description, err);
+        }
+      }
+    }
+
+    saveToStorage();
+    populateCategorySelect();
+    updateDashboard();
+    showToast(`✨ AI classified ${updatedCount} transaction(s) successfully!`, "success");
+  } finally {
+    isBatchCategorizing = false;
+  }
+}
+window.aiCategorizeAllTransactions = aiCategorizeAllTransactions;
+
+// Ask AI for the single item currently typed in the Add Transaction modal
+async function askAiModalCategory() {
+  const rawInput = document.getElementById("add-txn-raw");
+  const previewCat = document.getElementById("add-txn-preview-cat");
+  const val = rawInput?.value?.trim();
+  if (!val) {
+    showToast("Please enter an item name first (e.g. Diet Coke)", "info");
+    return;
+  }
+  if (!window.aiCategorize) {
+    showToast("AI categorizer is not configured.", "error");
+    return;
+  }
+  if (previewCat) previewCat.innerHTML = '<span class="text-purple-400 animate-pulse">✨ Asking AI...</span>';
+  showToast(`Asking AI to categorize "${val}"...`, "info");
+  const cat = await window.aiCategorize(val);
+  if (cat && cat !== "Miscellaneous") {
+    rawInput.dataset.aiCategory = cat;
+    if (previewCat) previewCat.innerHTML = `<span class="text-emerald-400 font-bold">✨ ${cat}</span>`;
+    showToast(`AI categorized "${val}" as "${cat}"!`, "success");
+  } else {
+    if (previewCat) previewCat.textContent = cat || "Miscellaneous";
+    showToast(`Classified as "${cat || 'Miscellaneous'}"`, "info");
+  }
+}
+window.askAiModalCategory = askAiModalCategory;
 
 

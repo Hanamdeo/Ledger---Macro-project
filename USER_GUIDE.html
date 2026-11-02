@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ledger – User Guide & Project Documentation</title>
+  <style>
+    /* ===== BASE ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 10.5pt; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      color: #1e293b;
+      background: #fff;
+      line-height: 1.65;
+    }
+
+    /* ===== PRINT SETUP ===== */
+    @page {
+      size: A4;
+      margin: 18mm 18mm 20mm 18mm;
+    }
+    @media print {
+      .no-print { display: none !important; }
+      .page-break { page-break-before: always; }
+      body { font-size: 9.5pt; }
+      h1 { font-size: 20pt; }
+      h2 { font-size: 13pt; }
+      h3 { font-size: 10.5pt; }
+      .cover { min-height: unset; padding: 60px 0 40px; }
+    }
+
+    /* ===== PRINT HINT BAR ===== */
+    .print-hint {
+      background: #0f172a;
+      color: #e2e8f0;
+      text-align: center;
+      padding: 12px 20px;
+      font-size: 13px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .print-hint kbd {
+      background: #334155;
+      border: 1px solid #475569;
+      border-radius: 4px;
+      padding: 2px 7px;
+      font-family: monospace;
+      font-size: 12px;
+    }
+    .print-hint button {
+      margin-left: 16px;
+      background: #6366f1;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 5px 16px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .print-hint button:hover { background: #4f46e5; }
+
+    /* ===== LAYOUT ===== */
+    .page { max-width: 800px; margin: 0 auto; padding: 32px 40px; }
+
+    /* ===== COVER PAGE ===== */
+    .cover {
+      min-height: 88vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 80px 0 60px;
+      border-bottom: 3px solid #e2e8f0;
+    }
+    .cover-logo {
+      width: 72px; height: 72px;
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      border-radius: 20px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 36px;
+      margin-bottom: 28px;
+      box-shadow: 0 8px 32px rgba(99,102,241,0.3);
+    }
+    .cover h1 {
+      font-size: 38pt;
+      font-weight: 800;
+      letter-spacing: -1px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6, #ec4899);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+    }
+    .cover .subtitle {
+      font-size: 15pt;
+      color: #64748b;
+      margin-bottom: 36px;
+      font-weight: 400;
+    }
+    .cover-meta {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 22px 36px;
+      text-align: left;
+      min-width: 360px;
+    }
+    .cover-meta table { width: 100%; border-collapse: collapse; }
+    .cover-meta td { padding: 5px 0; vertical-align: top; }
+    .cover-meta td:first-child { color: #64748b; width: 120px; font-size: 9pt; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; padding-right: 16px; }
+    .cover-meta td:last-child { color: #1e293b; font-weight: 500; }
+    .cover-tag {
+      display: inline-block;
+      margin-top: 24px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: #fff;
+      border-radius: 100px;
+      padding: 5px 20px;
+      font-size: 9.5pt;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    /* ===== TOC ===== */
+    .toc { margin: 40px 0; }
+    .toc h2 { font-size: 11pt; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; margin-bottom: 16px; font-weight: 700; }
+    .toc ol { list-style: none; counter-reset: toc; }
+    .toc li { counter-increment: toc; display: flex; align-items: baseline; gap: 6px; padding: 5px 0; border-bottom: 1px dotted #e2e8f0; }
+    .toc li::before { content: counter(toc) "."; color: #6366f1; font-weight: 700; min-width: 24px; }
+    .toc a { color: #1e293b; text-decoration: none; font-weight: 500; }
+    .toc .pg { margin-left: auto; color: #94a3b8; font-size: 9pt; }
+
+    /* ===== SECTIONS ===== */
+    section { margin-top: 44px; }
+    .section-header {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    .section-number {
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: #fff;
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800;
+      font-size: 13pt;
+      flex-shrink: 0;
+    }
+    h2 { font-size: 15pt; font-weight: 800; color: #1e293b; }
+    h3 { font-size: 11pt; font-weight: 700; color: #334155; margin: 20px 0 8px; }
+    h4 { font-size: 9.5pt; font-weight: 700; color: #475569; margin: 14px 0 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    p { margin-bottom: 10px; }
+
+    /* ===== CALLOUTS ===== */
+    .callout {
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin: 16px 0;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      font-size: 9.5pt;
+    }
+    .callout .icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+    .callout.info { background: #eff6ff; border-left: 4px solid #3b82f6; }
+    .callout.tip { background: #f0fdf4; border-left: 4px solid #10b981; }
+    .callout.warning { background: #fffbeb; border-left: 4px solid #f59e0b; }
+    .callout.danger { background: #fef2f2; border-left: 4px solid #ef4444; }
+    .callout strong { display: block; margin-bottom: 3px; color: #1e293b; }
+
+    /* ===== CODE ===== */
+    code {
+      font-family: 'Cascadia Code', 'Consolas', 'Fira Code', monospace;
+      font-size: 8.5pt;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: 4px;
+      padding: 1px 5px;
+      color: #7c3aed;
+    }
+    pre {
+      background: #0f172a;
+      color: #e2e8f0;
+      border-radius: 10px;
+      padding: 16px 20px;
+      overflow-x: auto;
+      font-family: 'Cascadia Code', 'Consolas', monospace;
+      font-size: 8.5pt;
+      margin: 12px 0;
+      line-height: 1.7;
+    }
+    pre .comment { color: #64748b; }
+    pre .key { color: #93c5fd; }
+    pre .val { color: #6ee7b7; }
+    pre .str { color: #fbbf24; }
+    pre .kw { color: #c084fc; }
+
+    /* ===== TABLES ===== */
+    table { width: 100%; border-collapse: collapse; font-size: 9pt; margin: 12px 0; }
+    th { background: #f8fafc; text-align: left; padding: 8px 12px; font-weight: 700; color: #475569; border: 1px solid #e2e8f0; font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.4px; }
+    td { padding: 8px 12px; border: 1px solid #e2e8f0; vertical-align: top; }
+    tr:nth-child(even) td { background: #fafafa; }
+
+    /* ===== CATEGORY BADGES ===== */
+    .cat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
+    .cat-badge {
+      display: flex; align-items: center; gap: 10px;
+      background: #f8fafc; border: 1px solid #e2e8f0;
+      border-radius: 8px; padding: 8px 12px;
+      font-size: 9pt;
+    }
+    .cat-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+    .cat-badge strong { font-weight: 600; }
+    .cat-badge span { color: #64748b; font-size: 8pt; }
+
+    /* ===== STEPS ===== */
+    .steps { counter-reset: step; list-style: none; margin: 12px 0; }
+    .steps li {
+      counter-increment: step;
+      display: flex; gap: 14px; align-items: flex-start;
+      margin-bottom: 14px;
+    }
+    .steps li::before {
+      content: counter(step);
+      background: #6366f1;
+      color: #fff;
+      width: 24px; height: 24px; min-width: 24px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 9pt;
+      margin-top: 1px;
+    }
+    .steps li div strong { display: block; }
+
+    /* ===== FLOW DIAGRAM ===== */
+    .flow {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 16px 0;
+      padding: 16px;
+      background: #f8fafc;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+    }
+    .flow-box {
+      background: #fff;
+      border: 1.5px solid #c7d2fe;
+      border-radius: 8px;
+      padding: 8px 14px;
+      text-align: center;
+      font-size: 8.5pt;
+      font-weight: 600;
+    }
+    .flow-box.green { border-color: #6ee7b7; }
+    .flow-box.red { border-color: #fca5a5; }
+    .flow-arrow { color: #94a3b8; font-size: 14px; font-weight: 700; }
+    .flow-label { font-size: 7.5pt; color: #94a3b8; }
+
+    /* ===== FEATURE GRID ===== */
+    .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 12px 0; }
+    .feature-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    .feature-card .feat-icon { font-size: 20px; margin-bottom: 6px; }
+    .feature-card strong { display: block; font-size: 9.5pt; margin-bottom: 4px; }
+    .feature-card p { font-size: 8.5pt; color: #475569; margin: 0; }
+
+    /* ===== FOOTER ===== */
+    footer {
+      margin-top: 60px;
+      padding-top: 20px;
+      border-top: 2px solid #e2e8f0;
+      text-align: center;
+      color: #94a3b8;
+      font-size: 8.5pt;
+    }
+
+    /* ===== FILE TREE ===== */
+    .file-tree {
+      background: #0f172a;
+      color: #cbd5e1;
+      border-radius: 10px;
+      padding: 16px 20px;
+      font-family: monospace;
+      font-size: 8.5pt;
+      line-height: 1.9;
+      margin: 12px 0;
+    }
+    .file-tree .dir { color: #93c5fd; font-weight: 700; }
+    .file-tree .file { color: #e2e8f0; }
+    .file-tree .note { color: #64748b; }
+
+    /* ===== DIVIDER ===== */
+    hr { border: none; border-top: 1px solid #e2e8f0; margin: 32px 0; }
+  </style>
+</head>
+<body>
+
+<!-- ===== PRINT HINT BAR ===== -->
+<div class="print-hint no-print">
+  📄 To save as PDF: press <kbd>Ctrl</kbd>+<kbd>P</kbd> → set Destination to <strong>Save as PDF</strong> → Paper size <strong>A4</strong> → enable <strong>Background graphics</strong>
+  <button onclick="window.print()">🖨️ Print / Save as PDF</button>
+</div>
+
+<div class="page">
+
+  <!-- ============================================================ -->
+  <!-- COVER PAGE -->
+  <!-- ============================================================ -->
+  <div class="cover">
+    <div class="cover-logo">💰</div>
+    <h1>Ledger</h1>
+    <p class="subtitle">Personal Finance Analytics — Project Documentation & User Guide</p>
+
+    <div class="cover-meta">
+      <table>
+        <tr><td>Project</td><td>Ledger – Personal Finance Analytics</td></tr>
+        <tr><td>Authors</td><td>Harshit Namdeo (BTCB25O1059)<br>Aryan Gupta (BTCB25O1027)</td></tr>
+        <tr><td>Stack</td><td>HTML5 · CSS3 · Vanilla JavaScript</td></tr>
+        <tr><td>AI Engine</td><td>Google Gemini API · OpenAI GPT-4o-mini · Offline Fallback</td></tr>
+        <tr><td>Cloud Sync</td><td>Supabase (PostgreSQL + Realtime)</td></tr>
+        <tr><td>Version</td><td>2.0 — AI Categorization Release</td></tr>
+        <tr><td>Date</td><td>November 2026</td></tr>
+      </table>
+
+
+    </div>
+
+    <span class="cover-tag">Academic Project · Computer Science</span>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- TABLE OF CONTENTS -->
+  <!-- ============================================================ -->
+  <div class="toc">
+    <h2>Table of Contents</h2>
+    <ol>
+      <li><a href="#s1">Project Overview</a><span class="pg">§1</span></li>
+      <li><a href="#s2">Architecture & File Structure</a><span class="pg">§2</span></li>
+      <li><a href="#s3">Getting Started</a><span class="pg">§3</span></li>
+      <li><a href="#s4">Features Walkthrough</a><span class="pg">§4</span></li>
+      <li><a href="#s5">AI Categorization Engine</a><span class="pg">§5</span></li>
+      <li><a href="#s6">Cloud Sync with Supabase</a><span class="pg">§6</span></li>
+      <li><a href="#s7">Rules Engine</a><span class="pg">§7</span></li>
+      <li><a href="#s8">PDF & CSV Import</a><span class="pg">§8</span></li>
+      <li><a href="#s9">Setting Up API Keys</a><span class="pg">§9</span></li>
+      <li><a href="#s10">Transaction Categories</a><span class="pg">§10</span></li>
+      <li><a href="#s11">Troubleshooting</a><span class="pg">§11</span></li>
+    </ol>
+  </div>
+
+  <div class="page-break"></div>
+
+  <!-- ============================================================ -->
+  <!-- SECTION 1 — OVERVIEW -->
+  <!-- ============================================================ -->
+  <section id="s1">
+    <div class="section-header">
+      <div class="section-number">1</div>
+      <h2>Project Overview</h2>
+    </div>
+
+    <p><strong>Ledger</strong> is a browser-based personal finance analytics application that helps users track, categorize, and visualize their income and expenses. It runs entirely in the browser — no installation required — and optionally syncs data to the cloud using Supabase.</p>
+
+    <p>The core innovation is its <strong>three-tier AI categorization engine</strong>: when a user adds a transaction such as "Diet Coke" or "Tata Sky", the app automatically determines the correct spending category — <em>Food &amp; Dining</em>, <em>Subscriptions &amp; Entertainment</em>, and so on — by querying Google Gemini, falling back to OpenAI GPT-4o-mini, and finally to a built-in 300+ keyword offline engine that works without any internet or API key.</p>
+
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feat-icon">✨</div>
+        <strong>AI Auto-Categorization</strong>
+        <p>Gemini → OpenAI → Smart offline fallback engine. Works even without API keys.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feat-icon">☁️</div>
+        <strong>Cloud Sync</strong>
+        <p>Supabase real-time sync lets you access your data from any device.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feat-icon">📊</div>
+        <strong>Analytics Dashboard</strong>
+        <p>Donut chart, bar chart, trend lines, KPIs — all update in real time.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feat-icon">📄</div>
+        <strong>PDF / CSV Import</strong>
+        <p>Paste or upload bank statements; the parser auto-extracts transactions.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feat-icon">⚙️</div>
+        <strong>Rules Engine</strong>
+        <p>Create merchant rules (exact, contains, regex) to auto-assign categories.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feat-icon">🔒</div>
+        <strong>Auth &amp; Local Mode</strong>
+        <p>Sign up for cloud sync or use Demo Mode — all data stored in localStorage.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- SECTION 2 — ARCHITECTURE -->
+  <!-- ============================================================ -->
+  <section id="s2">
+    <div class="section-header">
+      <div class="section-number">2</div>
+      <h2>Architecture &amp; File Structure</h2>
+    </div>
+
+    <p>Ledger is a <strong>zero-dependency static web app</strong> — it requires no Node.js, no build step, and no server at runtime. Open <code>index.html</code> in any modern browser and it works.</p>
+
+    <div class="file-tree">
+      <span class="dir">personal-finance-analytics/</span><br>
+      ├── <span class="file">index.html</span>         <span class="note">── Main app UI (all views in one HTML file)</span><br>
+      ├── <span class="file">app.js</span>             <span class="note">── Core application logic (~2900 lines)</span><br>
+      ├── <span class="file">supabase-config.js</span> <span class="note">── API keys + AI engine + cloud helpers</span><br>
+      ├── <span class="file">styles.css</span>          <span class="note">── Custom CSS (Tailwind used inline)</span><br>
+      ├── <span class="file">server.js</span>           <span class="note">── Optional local dev server (Node.js)</span><br>
+      ├── <span class="file">schema.sql</span>          <span class="note">── SQLite schema (legacy local DB)</span><br>
+      ├── <span class="file">supabase_schema.sql</span><span class="note">── PostgreSQL schema for Supabase</span><br>
+      ├── <span class="file">sample_statement_hdfc.csv</span>  <span class="note">── Sample bank CSV for import testing</span><br>
+      └── <span class="file">sample_bank_statement.pdf</span>  <span class="note">── Sample PDF for import testing</span>
+    </div>
+
+    <h3>How the Layers Interact</h3>
+
+    <div class="flow">
+      <div class="flow-box">Browser<br><span class="flow-label">index.html</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box">App Logic<br><span class="flow-label">app.js</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box">AI Engine<br><span class="flow-label">supabase-config.js</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box green">Gemini / OpenAI<br><span class="flow-label">Cloud API</span></div>
+      <br style="width:100%">
+      <div style="width:100%; text-align:center; color:#94a3b8; font-size:8pt; padding-top:6px">↕ Supabase PostgreSQL (optional cloud sync)</div>
+    </div>
+
+    <h3>Data Storage</h3>
+    <table>
+      <tr><th>Storage</th><th>Used For</th><th>Requires</th></tr>
+      <tr><td><strong>localStorage</strong></td><td>All transactions &amp; rules for demo / offline mode</td><td>Nothing — works out of the box</td></tr>
+      <tr><td><strong>Supabase</strong></td><td>Cloud sync across devices, multi-user accounts</td><td>Supabase project URL + Anon Key</td></tr>
+    </table>
+
+
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- SECTION 3 — GETTING STARTED -->
+  <!-- ============================================================ -->
+  <section id="s3">
+    <div class="section-header">
+      <div class="section-number">3</div>
+      <h2>Getting Started</h2>
+    </div>
+
+    <h3>Option A — Open Directly (Recommended)</h3>
+    <ol class="steps">
+      <li><div>Download or clone the project folder to your computer.</div></li>
+      <li><div>Double-click <code>index.html</code> to open it in your browser. No server needed.</div></li>
+      <li><div>On the login screen, click <strong>"Continue as Demo"</strong> to start immediately with sample data. No account required.</div></li>
+    </ol>
+
+    <h3>Option B — Local Server (for PDF import)</h3>
+    <p>The PDF import feature requires a server due to browser security restrictions on local file reading.</p>
+    <ol class="steps">
+      <li><div>Install Node.js (nodejs.org) if not already installed.</div></li>
+      <li><div>Open a terminal in the project folder and run:<br><code>node server.js</code></div></li>
+      <li><div>Open <code>http://localhost:3000</code> in your browser.</div></li>
+    </ol>
+
+    <div class="callout tip">
+      <span class="icon">💡</span>
+      <div><strong>Demo Mode</strong> — everything works in demo mode. Transactions are saved to your browser's localStorage and persist across sessions. Use a real account (Sign Up) only if you want cloud sync across devices.</div>
+    </div>
+
+    <h3>Login Screen</h3>
+    <table>
+      <tr><th>Option</th><th>How to Use</th><th>Data Stored</th></tr>
+      <tr><td><strong>Demo Mode</strong></td><td>Click "Continue as Demo" — no credentials needed</td><td>Browser localStorage only</td></tr>
+      <tr><td><strong>Sign Up</strong></td><td>Enter your email + password (min 6 chars)</td><td>Supabase cloud + localStorage</td></tr>
+      <tr><td><strong>Sign In</strong></td><td>Use the email + password you signed up with</td><td>Supabase cloud</td></tr>
+    </table>
+
+
+  </section>
+
+  <div class="page-break"></div>
+
+  <!-- ============================================================ -->
+  <!-- SECTION 4 — FEATURES WALKTHROUGH -->
+  <!-- ============================================================ -->
+  <section id="s4">
+    <div class="section-header">
+      <div class="section-number">4</div>
+      <h2>Features Walkthrough</h2>
+    </div>
+
+    <h3>4.1 Dashboard (KPI Bar)</h3>
+    <p>At the top of the app, four KPI cards update in real time as you add transactions:</p>
+    <table>
+      <tr><th>KPI Card</th><th>What it Shows</th></tr>
+      <tr><td>💰 Total Balance</td><td>Net balance = Total Income − Total Expenses</td></tr>
+      <tr><td>📈 Total Income</td><td>Sum of all transactions classified as "Income"</td></tr>
+      <tr><td>📉 Total Expenses</td><td>Sum of all debit transactions</td></tr>
+      <tr><td>🏆 Top Category</td><td>Category with the highest total spend this period</td></tr>
+    </table>
+
+
+
+    <h3>4.2 Adding a Transaction Manually</h3>
+    <ol class="steps">
+      <li><div>Click the <strong>"+ Add Transaction"</strong> button (top-right area).</div></li>
+      <li><div>In the modal, type the <strong>description</strong> (e.g. "Diet Coke", "Tata Sky", "Uber"). The category preview updates live as you type.</div></li>
+      <li><div>If the description is unrecognized, the app shows <em>"✨ AI classifying…"</em> and queries the AI engine after a 400 ms debounce.</div></li>
+      <li><div>Fill in the <strong>amount</strong>, <strong>date</strong>, and <strong>type</strong> (Debit / Credit).</div></li>
+      <li><div>Optionally click <strong>"✨ Ask AI"</strong> to manually trigger AI categorization for the current description.</div></li>
+      <li><div>Click <strong>"Add Transaction"</strong>. The transaction is saved and the dashboard updates instantly.</div></li>
+    </ol>
+
+    <div class="callout info">
+      <span class="icon">ℹ️</span>
+      <div><strong>Live Category Preview</strong> — as you type in the description field, the pill next to it shows the predicted category in real time. Green text means a rule matched; purple means AI was used; grey means the offline keyword engine was used.</div>
+    </div>
+
+    <h3>4.3 Transactions Table</h3>
+    <p>The main table lists all transactions with their ID, date, description, amount, and category badge. You can:</p>
+    <ul style="padding-left: 20px; margin: 8px 0;">
+      <li style="margin-bottom: 6px;"><strong>Filter</strong> — by date range, category, or free-text search</li>
+      <li style="margin-bottom: 6px;"><strong>Sort</strong> — by clicking any column header</li>
+      <li style="margin-bottom: 6px;"><strong>Edit</strong> — click the ✏️ pencil icon on any row to modify it</li>
+      <li style="margin-bottom: 6px;"><strong>Delete</strong> — click the 🗑️ trash icon (with confirmation)</li>
+      <li style="margin-bottom: 6px;"><strong>✨ AI Auto-Categorize</strong> — re-classifies all "Miscellaneous" transactions using the AI engine</li>
+    </ul>
+
+    <h3>4.4 Analytics Tab</h3>
+    <p>Switch to the <strong>Analytics</strong> tab to see:</p>
+    <ul style="padding-left: 20px; margin: 8px 0;">
+      <li style="margin-bottom: 6px;"><strong>Donut Chart</strong> — category-wise spending breakdown</li>
+      <li style="margin-bottom: 6px;"><strong>Bar Chart</strong> — monthly income vs. expenses</li>
+      <li style="margin-bottom: 6px;"><strong>Trend Line</strong> — running balance over time</li>
+      <li style="margin-bottom: 6px;"><strong>Top Merchants</strong> — highest-spend merchants ranked</li>
+    </ul>
+    <p>All charts respond to the date and category filters applied in the Transactions tab.</p>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- SECTION 5 — AI ENGINE -->
+  <!-- ============================================================ -->
+  <section id="s5">
+    <div class="section-header">
+      <div class="section-number">5</div>
+      <h2>AI Categorization Engine</h2>
+    </div>
+
+    <p>The AI engine lives in <code>supabase-config.js</code> and operates as a <strong>three-tier fallback chain</strong>. This ensures categorization always works — even without internet or API keys.</p>
+
+    <h3>The Three-Tier Chain</h3>
+
+    <div class="flow" style="flex-direction: column; gap: 0;">
+      <div style="display:flex; align-items:center; gap:10px; width:100%; padding:8px 0;">
+        <div class="flow-box" style="min-width:160px; background:#eff6ff;">🤖 Tier 1: Google Gemini<br><span class="flow-label">gemini-2.5-flash / 2.0-flash</span></div>
+        <div class="flow-arrow">→</div>
+        <div style="font-size:8.5pt; color:#475569;">Queries the Gemini API with a strict prompt: <em>"Return ONLY one category from [list]"</em>. Fastest and most accurate when available. Requires a free Gemini API key from <a href="https://aistudio.google.com" style="color:#6366f1;">aistudio.google.com</a>.</div>
+      </div>
+      <div style="padding: 2px 0 2px 75px; color:#94a3b8; font-size:9pt;">↓ if Gemini unavailable (403 / 404 / network error)</div>
+      <div style="display:flex; align-items:center; gap:10px; width:100%; padding:8px 0;">
+        <div class="flow-box" style="min-width:160px; background:#faf5ff;">🧠 Tier 2: OpenAI GPT-4o-mini<br><span class="flow-label">gpt-4o-mini</span></div>
+        <div class="flow-arrow">→</div>
+        <div style="font-size:8.5pt; color:#475569;">Falls back to OpenAI. Uses a system prompt that constrains output to the 12 exact category names. Requires an OpenAI API key with credits.</div>
+      </div>
+      <div style="padding: 2px 0 2px 75px; color:#94a3b8; font-size:9pt;">↓ if OpenAI unavailable (no key / exhausted credits)</div>
+      <div style="display:flex; align-items:center; gap:10px; width:100%; padding:8px 0;">
+        <div class="flow-box green" style="min-width:160px; background:#f0fdf4;">🧠 Tier 3: In-Browser ML Classifier<br><span class="flow-label">MultinomialNB + Subword N-Grams</span></div>
+        <div class="flow-arrow">→</div>
+        <div style="font-size:8.5pt; color:#475569;">A statistical Machine Learning model trained on <strong>2,280+ transactions</strong> across all 12 categories. Delivers <strong>97.4% test accuracy</strong>, sub-millisecond client execution, confidence scoring, and online learning that adapts to user confirmations. <strong>Zero API costs, works 100% offline.</strong></div>
+      </div>
+    </div>
+
+    <h3>How the AI Prompt Works</h3>
+    <p>The system prompt sent to Gemini and OpenAI is strictly constrained:</p>
+    <pre><span class="comment">// System prompt (same for both Gemini and OpenAI)</span>
+<span class="str">"You are a personal-finance transaction categorizer.
+Return ONLY one category from this exact list:
+[Food &amp; Dining, Shopping, Travel &amp; Transport,
+ Utilities &amp; Bills, Education &amp; Learning,
+ Subscriptions &amp; Entertainment, Health &amp; Wellness,
+ Groceries, Investments, Income,
+ Personal &amp; Transfers, Miscellaneous].
+Return nothing else."</span>
+
+<span class="comment">// User message</span>
+<span class="str">"Transaction description: &quot;Diet Coke&quot;"</span>
+
+<span class="comment">// AI responds with exactly:</span>
+<span class="str">"Food &amp; Dining"</span></pre>
+
+    <p>The response is then passed through <code>normalizeCategory()</code> which maps any slight variation (e.g. lowercase, extra words) back to the exact category key used in the app.</p>
+
+    <h3>When Does AI Run?</h3>
+    <table>
+      <tr><th>Trigger</th><th>What Happens</th></tr>
+      <tr><td>Typing in Add Transaction modal</td><td>400 ms debounce → AI called only if local rules return "Miscellaneous"</td></tr>
+      <tr><td>Clicking "✨ Ask AI" button</td><td>Immediately queries AI for current description</td></tr>
+      <tr><td>Submitting the form</td><td>AI category used if already fetched; otherwise re-fetches on submit</td></tr>
+      <tr><td>Clicking "✨ AI Auto-Categorize"</td><td>Batch re-classifies ALL existing "Miscellaneous" transactions</td></tr>
+    </table>
+
+    <h3>5.1 In-Browser Machine Learning Subsystem</h3>
+    <p>To eliminate reliance on paid cloud credits and guarantee privacy, Ledger includes a fully trained <strong>Multinomial Naive Bayes + Subword N-Gram TF-IDF Classifier</strong> that runs directly inside the client's browser:</p>
+    <ul style="padding-left:20px; margin:8px 0;">
+      <li style="margin-bottom:6px;"><strong>Dataset:</strong> 2,288 labeled financial transactions (UPI, POS, card clearing, and merchant items).</li>
+      <li style="margin-bottom:6px;"><strong>Accuracy:</strong> <strong>97.38% test accuracy</strong> evaluated on an independent 458-sample holdout set.</li>
+      <li style="margin-bottom:6px;"><strong>Subword N-Gram Tokenization:</strong> Extracts 3-character and 4-character subwords, making the model resilient to typos, abbreviations, and messy bank statement text.</li>
+      <li style="margin-bottom:6px;"><strong>Confidence Scoring:</strong> Computes softmax probability distributions across all 12 categories, shown live in the Add Transaction modal (e.g., <em>Food &amp; Dining (99% ML)</em>).</li>
+      <li style="margin-bottom:6px;"><strong>Continuous Online Learning:</strong> When you manually confirm or categorize transactions, local Bayesian priors update in <code>localStorage</code>, tailoring predictions to your unique spending habits.</li>
+    </ul>
+
+
+  </section>
+
+  <div class="page-break"></div>
+
+  <!-- ============================================================ -->
+  <!-- SECTION 6 — CLOUD SYNC -->
+  <!-- ============================================================ -->
+  <section id="s6">
+    <div class="section-header">
+      <div class="section-number">6</div>
+      <h2>Cloud Sync with Supabase</h2>
+    </div>
+
+    <p>When a user creates an account and signs in, Ledger syncs all transactions to a <strong>Supabase PostgreSQL database</strong>. This provides:</p>
+    <ul style="padding-left:20px; margin:8px 0;">
+      <li style="margin-bottom:6px;">Access your transactions from any browser / device</li>
+      <li style="margin-bottom:6px;">Real-time updates (Supabase Realtime WebSocket subscription)</li>
+      <li style="margin-bottom:6px;">Row-level security — each user sees only their own data</li>
+    </ul>
+
+    <h3>How Sync Works</h3>
+    <ol class="steps">
+      <li><div>User signs up / signs in → <code>cloudSignUp()</code> / <code>cloudSignIn()</code> authenticate via Supabase Auth.</div></li>
+      <li><div>On login, <code>cloudFetchTransactions()</code> pulls all saved transactions from the <code>transactions</code> table filtered by <code>user_id</code>.</div></li>
+      <li><div>Every time a transaction is added or edited, <code>cloudSaveTransactions()</code> upserts the updated array to Supabase. Before saving, any "Miscellaneous" item is re-sent through the AI engine for a final classification attempt.</div></li>
+      <li><div>Supabase Realtime pushes changes from other devices back to the open session automatically.</div></li>
+    </ol>
+
+    <div class="callout warning">
+      <span class="icon">⚠️</span>
+      <div><strong>Demo Mode Note</strong> — In demo mode, all data lives in <code>localStorage</code> only. Clearing browser data will erase transactions. Use Sign Up for persistent cloud storage.</div>
+    </div>
+
+    <h3>Supabase Schema (simplified)</h3>
+    <pre><span class="kw">CREATE TABLE</span> transactions (
+  id          <span class="key">TEXT PRIMARY KEY</span>,
+  user_id     <span class="key">UUID REFERENCES</span> auth.users,
+  date        <span class="key">DATE</span>,
+  description <span class="key">TEXT</span>,
+  amount      <span class="key">NUMERIC</span>,
+  type        <span class="key">TEXT</span>,        <span class="comment">-- 'credit' | 'debit'</span>
+  category    <span class="key">TEXT</span>,
+  raw_description <span class="key">TEXT</span>
+);</pre>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- SECTION 7 — RULES ENGINE -->
+  <!-- ============================================================ -->
+  <section id="s7">
+    <div class="section-header">
+      <div class="section-number">7</div>
+      <h2>Rules Engine</h2>
+    </div>
+
+    <p>The <strong>Rules Engine</strong> lets you teach the app to recognize your personal merchants. Rules run <em>before</em> the AI engine — if a rule matches, the category is assigned instantly without any API call.</p>
+
+    <h3>Rule Types</h3>
+    <table>
+      <tr><th>Type</th><th>How it Matches</th><th>Example</th></tr>
+      <tr><td><strong>Exact</strong></td><td>Description must exactly equal the pattern (case-insensitive)</td><td>Pattern: <code>AMAZON PAY</code> → Category: Shopping</td></tr>
+      <tr><td><strong>Contains</strong></td><td>Description must contain the pattern anywhere</td><td>Pattern: <code>swiggy</code> → Category: Food &amp; Dining</td></tr>
+      <tr><td><strong>Regex</strong></td><td>Full JavaScript regular expression match</td><td>Pattern: <code>^UPI/.*@paytm</code> → Category: Personal &amp; Transfers</td></tr>
+    </table>
+
+
+
+    <h3>Adding a Rule</h3>
+    <ol class="steps">
+      <li><div>Go to the <strong>Rules</strong> tab in the app.</div></li>
+      <li><div>Click <strong>"+ Add Rule"</strong>.</div></li>
+      <li><div>Enter the <strong>Pattern</strong> (merchant name or regex), select the <strong>Rule Type</strong>, and pick the <strong>Category</strong>.</div></li>
+      <li><div>Optionally set a <strong>Clean Merchant Name</strong> — this is the display name shown in the table instead of the raw bank text.</div></li>
+      <li><div>Click <strong>Save</strong>. The rule is immediately applied to all existing transactions.</div></li>
+    </ol>
+
+    <div class="callout tip">
+      <span class="icon">💡</span>
+      <div>Rules are evaluated in order, top to bottom. Drag to reorder them if two rules might conflict. The first matching rule wins.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- SECTION 8 — PDF & CSV IMPORT -->
+  <!-- ============================================================ -->
+  <section id="s8">
+    <div class="section-header">
+      <div class="section-number">8</div>
+      <h2>PDF &amp; CSV Import</h2>
+    </div>
+
+    <p>Ledger can parse bank statements directly from PDF or CSV files, automatically extracting transactions without manual entry.</p>
+
+    <h3>Importing a CSV Bank Statement</h3>
+    <ol class="steps">
+      <li><div>Download your statement as CSV from your bank's portal.</div></li>
+      <li><div>Click <strong>"Import"</strong> (or the upload icon) in the toolbar.</div></li>
+      <li><div>Select your CSV file. The parser auto-detects HDFC, ICICI, SBI, and generic formats.</div></li>
+      <li><div>Review the preview — each row shows the parsed date, description, and amount.</div></li>
+      <li><div>Click <strong>Confirm Import</strong>. All transactions are saved and AI-categorized.</div></li>
+    </ol>
+
+    <h3>Importing a PDF Bank Statement</h3>
+    <ol class="steps">
+      <li><div>Run the local server (<code>node server.js</code>) — PDF reading requires server mode.</div></li>
+      <li><div>Click <strong>"Import PDF"</strong>. Select your PDF file.</div></li>
+      <li><div>For password-protected PDFs, enter the password when prompted.</div></li>
+      <li><div>The parser extracts transaction rows, cleans merchant names, and passes them through the Rules Engine and AI categorizer.</div></li>
+    </ol>
+
+    <h3>How AI Categorization Works with Uploaded PDFs</h3>
+    <p>When you upload a digital PDF statement or CSV:</p>
+    <ul style="padding-left: 20px; margin: 8px 0;">
+      <li style="margin-bottom: 6px;"><strong>Step 1 — Extraction:</strong> Transactions are parsed using OCR/stream matching (extracting Date, Narration, Debit, Credit, and Balance).</li>
+      <li style="margin-bottom: 6px;"><strong>Step 2 — Narration Cleaning:</strong> Raw bank prefixes like <code>UPI/</code>, <code>POS/</code>, <code>ACH/</code>, and transaction reference numbers are stripped to identify clean merchant names.</li>
+      <li style="margin-bottom: 6px;"><strong>Step 3 — Rules Engine &amp; Smart Offline AI:</strong> Each row is checked against user rules and the built-in 300+ brand dictionary (Swiggy, Uber, Tata Sky, Decathlon, Apollo Pharmacy, etc.) for instant, zero-latency categorization.</li>
+      <li style="margin-bottom: 6px;"><strong>Step 4 — Background AI Batch Pass:</strong> For any remaining unclassified transaction, the app automatically triggers the Gemini / OpenAI cloud engine in the background to ensure comprehensive classification.</li>
+    </ul>
+
+    <div class="callout tip">
+      <span class="icon">💡</span>
+      <div>You can also click <strong>"✨ AI Auto-Categorize"</strong> on the transactions table toolbar or inside the <strong>⚡ API Credits</strong> side panel at any time to re-classify unassigned rows.</div>
+    </div>
+
+    <h3>Supported Bank Formats</h3>
+    <table>
+      <tr><th>Bank</th><th>CSV</th><th>PDF</th></tr>
+      <tr><td>HDFC Bank</td><td>✅ Full support</td><td>✅ Full support</td></tr>
+      <tr><td>ICICI Bank</td><td>✅ Full support</td><td>⚠️ Partial</td></tr>
+      <tr><td>SBI</td><td>✅ Full support</td><td>⚠️ Partial</td></tr>
+      <tr><td>Kotak / Axis</td><td>✅ Generic parser</td><td>⚠️ Partial</td></tr>
+      <tr><td>UPI Records (PhonePe, GPay)</td><td>✅ Full support</td><td>—</td></tr>
+    </table>
+
+
+  </section>
+
+  <div class="page-break"></div>
+
+  <!-- ============================================================ -->
+  <!-- SECTION 9 — API KEYS -->
+  <!-- ============================================================ -->
+  <section id="s9">
+    <div class="section-header">
+      <div class="section-number">9</div>
+      <h2>Setting Up API Keys</h2>
+    </div>
+
+    <p>API keys are stored in <code>supabase-config.js</code>. This file is excluded from Git (<code>.gitignore</code>) to prevent accidental credential exposure.</p>
+
+    <h3>9.1 Google Gemini API Key (Recommended — Free)</h3>
+    <ol class="steps">
+      <li><div>Go to <a href="https://aistudio.google.com/app/apikey" style="color:#6366f1;">aistudio.google.com/app/apikey</a> and sign in with your personal Google account (not a Google Cloud project account).</div></li>
+      <li><div>Click <strong>"Create API Key"</strong> → copy the key.</div></li>
+      <li><div>Open <code>supabase-config.js</code> and paste it:<br>
+        <pre><span class="key">geminiKey</span>: <span class="str">"AIza...your-key-here..."</span></pre>
+      </div></li>
+    </ol>
+
+    <div class="callout tip">
+      <span class="icon">💡</span>
+      <div>The free tier at aistudio.google.com gives you <strong>1,500 requests/day</strong> at no cost — more than enough for personal use. If your key returns a 403 error, it was created inside a Google Cloud project with billing required; create a new key from AI Studio instead.</div>
+    </div>
+
+    <h3>9.2 OpenAI API Key (Optional — Paid)</h3>
+    <ol class="steps">
+      <li><div>Go to <a href="https://platform.openai.com/api-keys" style="color:#6366f1;">platform.openai.com/api-keys</a> and create a key.</div></li>
+      <li><div>Add credits to your account (minimum \$5 recommended).</div></li>
+      <li><div>In <code>supabase-config.js</code>:<br>
+        <pre><span class="key">openaiKey</span>: <span class="str">"sk-proj-...your-key-here..."</span></pre>
+      </div></li>
+    </ol>
+
+    <h3>9.3 Supabase Keys (For Cloud Sync)</h3>
+    <ol class="steps">
+      <li><div>Create a free project at <a href="https://supabase.com" style="color:#6366f1;">supabase.com</a>.</div></li>
+      <li><div>Go to <strong>Project Settings → API</strong> and copy the <strong>Project URL</strong> and <strong>anon (public) key</strong>.</div></li>
+      <li><div>Run the SQL in <code>supabase_schema.sql</code> in the Supabase SQL Editor to create tables and policies.</div></li>
+      <li><div>In <code>supabase-config.js</code>:<br>
+        <pre><span class="key">url</span>: <span class="str">"https://xxxxx.supabase.co"</span>,
+<span class="key">anonKey</span>: <span class="str">"eyJhbGciO..."</span></pre>
+      </div></li>
+    </ol>
+
+    <div class="callout danger">
+      <span class="icon">🔐</span>
+      <div><strong>Never commit API keys to Git.</strong> The <code>supabase-config.js</code> file is already in <code>.gitignore</code>. Never remove it from there or paste keys directly into <code>app.js</code> or <code>index.html</code>.</div>
+    </div>
+
+    <h3>9.4 Floating Side Popup — Real-Time API Credit &amp; Health Checker</h3>
+    <p>A floating pill labeled <strong>⚡ API Credits</strong> appears in the bottom-right corner of the application on every page:</p>
+    <ul style="padding-left: 20px; margin: 8px 0;">
+      <li style="margin-bottom: 6px;">Clicking it opens a slide-out side panel showing live quota, credits, and operational status for Gemini, OpenAI, and the Offline engine.</li>
+      <li style="margin-bottom: 6px;">Click <strong>"🔍 Live Check API Credits Now"</strong> to probe all endpoints in real time. It tests your keys, detects exhausted OpenAI quotas ($0.00 left), verifies Gemini free tier access, and shows total session requests made.</li>
+    </ul>
+
+    <h3>Full supabase-config.js Template</h3>
+    <pre><span class="kw">const</span> <span class="key">SUPABASE_CONFIG</span> = {
+  <span class="comment">// Supabase (cloud sync) — leave as-is to use local/demo mode only</span>
+  <span class="key">url</span>:     <span class="str">"YOUR_SUPABASE_URL"</span>,
+  <span class="key">anonKey</span>: <span class="str">"YOUR_SUPABASE_ANON_KEY"</span>,
+
+  <span class="comment">// Google Gemini — free, get from aistudio.google.com</span>
+  <span class="key">geminiKey</span>: <span class="str">"AIza..."</span>,
+
+  <span class="comment">// OpenAI — optional paid fallback</span>
+  <span class="comment">// openaiKey: "sk-proj-...",</span>
+};</pre>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- SECTION 10 — CATEGORIES -->
+  <!-- ============================================================ -->
+  <section id="s10">
+    <div class="section-header">
+      <div class="section-number">10</div>
+      <h2>Transaction Categories</h2>
+    </div>
+
+    <p>Ledger uses <strong>12 fixed categories</strong>. Every transaction must belong to exactly one category. The AI and keyword engine map any description to the closest match.</p>
+
+    <div class="cat-grid">
+      <div class="cat-badge"><div class="cat-dot" style="background:#f43f5e"></div><div><strong>Food &amp; Dining</strong><span>Restaurants, Swiggy, Zomato, cafés, beverages, snacks</span></div></div>
+      <div class="cat-badge"><div class="cat-dot" style="background:#f97316"></div><div><strong>Shopping</strong><span>Amazon, Flipkart, Myntra, clothing, electronics, gadgets</span></div></div>
+      <div class="cat-badge"><div class="cat-dot" style="background:#3b82f6"></div><div><strong>Travel &amp; Transport</strong><span>Uber, Ola, petrol, IRCTC, flights, metro, parking</span></div></div>
+      <div class="cat-badge"><div class="cat-dot" style="background:#8b5cf6"></div><div><strong>Utilities &amp; Bills</strong><span>Electricity, water, gas, broadband, phone recharge, rent</span></div></div>
+      <div class="cat-badge"><div class="cat-dot" style="background:#06b6d4"></div><div><strong>Education &amp; Learning</strong><span>College fees, coaching, Udemy, Coursera, books</span></div></div>
+      <div class="cat-badge"><div class="cat-dot" style="background:#ec4899"></div><div><strong>Subscriptions &amp; Entertainment</strong><span>Netflix, Spotify, Hotstar, Tata Sky, gaming, cinema</span></div></div>
+      <div class="cat-badge"><div class="cat-dot" style="background:#10b981"></div><div><strong>Health &amp; Wellness</strong><span>Pharmacy, doctors, gym, personal hygiene, medicines</span></div></div>
+      <div class="cat-badge"><div class="cat-dot" style="background:#14b8a6"></div><div><strong>Groceries</strong><span>Blinkit, Zepto, BigBasket, D-Mart, kirana, dairy</span></div></div>
+      <div class="cat-badge"><div class="cat-dot" style="background:#6366f1"></div><div><strong>Investments</strong><span>Zerodha, Groww, SIP, mutual funds, stocks, crypto</span></div></div>
+      <div class="cat-badge"><div class="cat-dot" style="background:#22c55e"></div><div><strong>Income</strong><span>Salary, stipend, cashback, refund, interest credited</span></div></div>
+      <div class="cat-badge"><div class="cat-dot" style="background:#0ea5e9"></div><div><strong>Personal &amp; Transfers</strong><span>UPI transfers, sent-to family or friends, loan repayments</span></div></div>
+      <div class="cat-badge"><div class="cat-dot" style="background:#94a3b8"></div><div><strong>Miscellaneous</strong><span>Anything that doesn't fit the above categories</span></div></div>
+    </div>
+
+    <div class="callout tip">
+      <span class="icon">💡</span>
+      <div>If a transaction keeps landing in <strong>Miscellaneous</strong>, add a Rule for its merchant name (see Section 7) so it's always correctly categorized going forward.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- SECTION 11 — TROUBLESHOOTING -->
+  <!-- ============================================================ -->
+  <section id="s11">
+    <div class="section-header">
+      <div class="section-number">11</div>
+      <h2>Troubleshooting</h2>
+    </div>
+
+    <table>
+      <tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr>
+      <tr>
+        <td>Everything shows as "Miscellaneous"</td>
+        <td>No API keys set, and description isn't in keyword list</td>
+        <td>Add a Gemini key (free), or add a Rule for the merchant, or click "✨ AI Auto-Categorize" after setting the key</td>
+      </tr>
+      <tr>
+        <td>Gemini returns 403 error</td>
+        <td>Key was created in a Google Cloud project, not AI Studio</td>
+        <td>Create a new key at <a href="https://aistudio.google.com" style="color:#6366f1;">aistudio.google.com</a> with your personal Gmail</td>
+      </tr>
+      <tr>
+        <td>OpenAI returns "credit_balance_exhausted"</td>
+        <td>Zero credits remaining on your OpenAI account</td>
+        <td>Add credits at platform.openai.com, or use the Gemini key instead (free)</td>
+      </tr>
+      <tr>
+        <td>PDF import not working</td>
+        <td>Opening index.html directly (file://) — browser blocks file reads</td>
+        <td>Run <code>node server.js</code> and open <code>localhost:3000</code></td>
+      </tr>
+      <tr>
+        <td>Data lost after clearing browser</td>
+        <td>Using Demo Mode — data is in localStorage only</td>
+        <td>Create an account (Sign Up) to sync to Supabase cloud</td>
+      </tr>
+      <tr>
+        <td>Sign in fails with "Invalid credentials"</td>
+        <td>Wrong email/password or Supabase not configured</td>
+        <td>Check <code>supabase-config.js</code> has the correct URL and anon key</td>
+      </tr>
+      <tr>
+        <td>Old Miscellaneous transactions not updating</td>
+        <td>AI only runs on new entries by default</td>
+        <td>Click <strong>"✨ AI Auto-Categorize"</strong> in the transactions toolbar to re-run on all existing ones</td>
+      </tr>
+      <tr>
+        <td>App shows blank page</td>
+        <td>JavaScript error on load</td>
+        <td>Open browser DevTools (F12) → Console tab. Check for errors. Most common: missing <code>supabase-config.js</code> file.</td>
+      </tr>
+    </table>
+
+
+
+    <h3>Running Without Any API Keys</h3>
+    <p>The app is fully functional without any API keys. The offline <code>fallbackSmartCategorize()</code> engine handles categorization using pattern matching. The only features that degrade are:</p>
+    <ul style="padding-left:20px; margin:8px 0;">
+      <li style="margin-bottom:6px;">Very unusual merchant names may fall through to "Miscellaneous" (fix: add a Rule)</li>
+      <li style="margin-bottom:6px;">Cloud sync is unavailable (fix: add Supabase keys)</li>
+    </ul>
+  </section>
+
+  <hr>
+
+  <footer>
+    <p><strong>Ledger — Personal Finance Analytics</strong></p>
+    <p>Harshit Namdeo (BTCB25O1059) &nbsp;·&nbsp; Aryan Gupta (BTCB25O1027)</p>
+    <p style="margin-top:6px;">Built with HTML5 · CSS3 · Vanilla JavaScript · Supabase · Google Gemini API</p>
+    <p style="margin-top:4px; color:#cbd5e1;">November 2026 &nbsp;·&nbsp; Version 2.0</p>
+  </footer>
+
+</div><!-- /page -->
+</body>
+</html>
