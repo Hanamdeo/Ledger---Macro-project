@@ -154,7 +154,26 @@ const LEXICON = {
     "Arbi Colocasia Taro Root", "Jimikand Suran Yam", "Kaddoo Pumpkin Yellow", "Sitaphal Pumpkin",
     "Sem Fali Broad Beans", "Gawar Phali Cluster Beans", "French Beans Fresh", "Mushroom Button Pack",
     "Baby Corn Pack", "Sweet Corn Cobs", "Makkai Bhutta Corn", "Kaccha Kela Raw Banana",
-    "Kaccha Aam Raw Mango", "Suhana Sabzi Mandi", "Local Sabzi Mandi Purchase", "Vegetable Vendor Sabzi Dukan"
+    "Kaccha Aam Raw Mango", "Suhana Sabzi Mandi", "Local Sabzi Mandi Purchase", "Vegetable Vendor Sabzi Dukan",
+    // Indian & International Fruits (Hindi, Regional & English)
+    "Fresh Fruit Basket", "Seasonal Fruit Market", "Local Fruit Vendor Thela",
+    "Seb Apple Royal Delicious", "Shimla Apple Crisp", "Kashmiri Seb Red Apple", "Green Apple Granny Smith",
+    "Kela Banana Robusta 1 Dozen", "Yellaki Banana Elaichi", "Ripe Yellow Banana Dozen", "Paka Kela Fresh",
+    "Aam Alphonso Mango Box", "Kesar Mango Fresh", "Dussehri Aam Sweet", "Langra Mango", "Chausa Aam Box", "Totapuri Mango",
+    "Santara Orange Nagpur", "Mosambi Sweet Lime Citrus", "Kinoo Orange Fresh 1kg", "Narangi Orange",
+    "Angoor Grapes Green Seedless", "Kala Angoor Black Grapes", "Red Globe Grapes", "Sonaka Grapes Box",
+    "Tarbooz Watermelon Striped", "Kharbooza Muskmelon Sweet", "Sharda Melon Cantaloupe",
+    "Papita Papaya Ripe", "Desi Papita Fresh", "Papaya 1kg Cut",
+    "Amrood Guava Fresh Allahabad", "Pink Guava 1kg", "Safeda Amrood",
+    "Anaar Pomegranate Ruby", "Pomegranate Seeds Pack", "Kandhari Anaar 1kg",
+    "Cheeku Sapodilla Chikoo", "Chiku Sweet Fresh", "Sapodilla Brown Chiku",
+    "Pineapple Ananas Sweet Slice", "Rani Pineapple Whole", "Fresh Ananas Cut",
+    "Strawberry Mahabaleshwar Box", "Fresh Strawberries 200g", "Blueberry Import 125g", "Blackberry Fresh Pack", "Raspberry Box",
+    "Kiwi Fruit Zespri Pack", "Kiwi Green 3 Pack", "Dragon Fruit Pitaya Pink", "Avocado Hass Fresh", "Avocado Ripe",
+    "Nariyal Coconut Fresh Water", "Tender Coconut Paani Daak", "Pani Wala Nariyal", "Nariyal Gola Dry",
+    "Jamun Black Plum", "Litchi Shahi Lychee Muzaffarpur", "Fresh Litchi 500g", "Ber Indian Jujube", "Amla Indian Gooseberry Fresh",
+    "Sitaphal Custard Apple Sharifa", "Ramfal Sweet", "Nashpati Pear Babgusha", "Green Pear Pack", "Plum Alu Bukhara",
+    "Khajoor Dates Fresh Kimia", "Figs Anjeer Fresh", "Sweet Cherry Kashmir Box"
   ],
   "Investments": [
     "Zerodha Broking Kite", "Groww Mutual Fund SIP", "Upstox Demat Trading", "Angel One Investment",
