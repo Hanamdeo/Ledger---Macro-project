@@ -142,7 +142,19 @@ const LEXICON = {
     "MDH Garam Masala Powder", "Tata Salt Iodized 1kg", "Maggi 2-Minute Noodles", "Surf Excel Matic Detergent",
     "Ariel Top Load Powder", "Vim Lemon Dishwash Bar", "Harpic Power Toilet Cleaner", "Lizol Floor Cleaner Citrus",
     "Origami Soft Facial Tissues", "Fresh Potatoes & Onions 5kg", "Fresh Tomatoes 2kg", "Shimla Apples 1kg",
-    "Alphonso Mangoes Box", "Green Vegetables Coriander Palak", "Paneer Malai Block 200g", "Curd Dahi Amul 400g"
+    "Alphonso Mangoes Box", "Green Vegetables Coriander Palak", "Paneer Malai Block 200g", "Curd Dahi Amul 400g",
+    // Indian Vegetable Names (Hindi, Regional & English)
+    "Aloo Potato Fresh", "Pyaaz Onion 1kg", "Tamatar Tomato Red", "Bhindi Lady Finger Okra", "Fresh Bhindi Sabzi", "Bhindi 500g Fresh", "Bhindi Okra Green 1kg", "Taza Bhindi Sabzi Mandi", "Bhindi Tori Karela Sabzi",
+    "Baingan Eggplant Brinjal", "Gobi Cauliflower Fresh", "Patta Gobi Cabbage Green", "Palak Spinach Bunch",
+    "Methi Fenugreek Leaves", "Sarson Saag Fresh", "Lauki Bottle Gourd", "Turai Ridge Gourd",
+    "Karela Bitter Gourd", "Tinda Apple Gourd", "Parwal Pointed Gourd", "Kundru Ivy Gourd",
+    "Shimla Mirch Capsicum", "Hari Mirch Green Chilli", "Adrak Ginger Fresh", "Lahsun Garlic Bulbs",
+    "Dhania Coriander Leaves", "Pudina Mint Bunch", "Kari Patta Curry Leaves", "Matar Green Peas",
+    "Gajar Carrot Red Winter", "Mooli Radish White", "Chukandar Beetroot", "Shalgam Turnip",
+    "Arbi Colocasia Taro Root", "Jimikand Suran Yam", "Kaddoo Pumpkin Yellow", "Sitaphal Pumpkin",
+    "Sem Fali Broad Beans", "Gawar Phali Cluster Beans", "French Beans Fresh", "Mushroom Button Pack",
+    "Baby Corn Pack", "Sweet Corn Cobs", "Makkai Bhutta Corn", "Kaccha Kela Raw Banana",
+    "Kaccha Aam Raw Mango", "Suhana Sabzi Mandi", "Local Sabzi Mandi Purchase", "Vegetable Vendor Sabzi Dukan"
   ],
   "Investments": [
     "Zerodha Broking Kite", "Groww Mutual Fund SIP", "Upstox Demat Trading", "Angel One Investment",
