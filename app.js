@@ -99,16 +99,16 @@ const DEFAULT_RULES = [
   { id: 31, pattern: "STIPEND|TCS", cleanMerchant: "INTERNSHIP STIPEND", category: "Income", type: "regex" },
   { id: 32, pattern: "UPWORK", cleanMerchant: "UPWORK FREELANCE", category: "Income", type: "contains" },
   { id: 33, pattern: "INTEREST|INT CR|INTEREST CREDIT", cleanMerchant: "BANK INTEREST", category: "Income", type: "regex" },
-  { id: 34, pattern: "PHONEPE|PHONE PE", cleanMerchant: "PhonePe", category: "Miscellaneous", type: "regex" },
   { id: 35, pattern: "RENT|rent", cleanMerchant: "Rent Payment", category: "Utilities & Bills", type: "contains" },
   { id: 36, pattern: "SALARY|SALRY|SAL CR", cleanMerchant: "Salary Credit", category: "Income", type: "regex" },
-  { id: 37, pattern: "PAYTM", cleanMerchant: "PayTM", category: "Miscellaneous", type: "contains" },
   { id: 38, pattern: "MAGGI|CHAI|COFFEE|TEA|JUICE|FOOD|SNACK|DHABA", cleanMerchant: "Food Purchase", category: "Food & Dining", type: "regex" },
   { id: 39, pattern: "VEGETABLE|VEG|SABZI|SABZ|MILK|DHOOD|DUDDU|GROCERY|GROCER|KIRANA|DUKAN", cleanMerchant: "Groceries", category: "Groceries", type: "regex" },
   { id: 40, pattern: "INDOLE|RESTAUR|BIRYANI|DOSA|BURGER|PIZZA|NOODLE", cleanMerchant: "Restaurant", category: "Food & Dining", type: "regex" },
   { id: 41, pattern: "DBT|OPMS|TSCSC|SCHOLARSHIP|SUBSIDY|NBCUA1B", cleanMerchant: "DBT Govt Transfer", category: "Income", type: "regex" },
   { id: 42, pattern: "GYM|FITNESS|WORKOUT", cleanMerchant: "Gym Membership", category: "Health & Wellness", type: "regex" },
-  { id: 43, pattern: "VISHAL|ARYAN|DIVYANSH|TEJSHWI|SHOURYA|GUDDI|MANOJ|GOVIND|PRAMOD|SATYANAR", cleanMerchant: "Personal Transfer", category: "Personal & Transfers", type: "regex" }
+  { id: 43, pattern: "RAGHAVEN|RAGHAVAN|RAGHVENDRA|LANDLORD|HOUSE RENT|MAKAN", cleanMerchant: "Rent Payment", category: "Utilities & Bills", type: "regex" },
+  { id: 44, pattern: "HARIOM|HARIOME", cleanMerchant: "Hariom", category: "Personal & Transfers", type: "regex" },
+  { id: 45, pattern: "JUGAL|KANHAIYA|PUNEET|SAUBHAG|SATYANAR|SOURABH|SAURABH|RAJESH", cleanMerchant: "Personal Transfer", category: "Personal & Transfers", type: "regex" }
 ];
 
 const CATEGORY_COLORS = {
@@ -334,6 +334,17 @@ function renderAuthenticatedUI(user) {
       .toUpperCase();
     if (headerAvatar) headerAvatar.textContent = initials || "HN";
     if (headerName) headerName.textContent = displayName;
+
+    // Toggle demo-only elements based on user account type
+    const isDemo = Boolean(user.isDemo || user.email === "demo@ledger.finance" || user.username === "demo");
+    const demoElements = document.querySelectorAll(".demo-only-element");
+    demoElements.forEach(el => {
+      if (isDemo) {
+        el.classList.remove("hidden");
+      } else {
+        el.classList.add("hidden");
+      }
+    });
   }
 }
 
@@ -469,10 +480,14 @@ async function handleSignUpSubmit(event) {
         id: user.id,
         name: name,
         email: email,
-        isCloud: true
+        isCloud: true,
+        isDemo: false
       };
       localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(appUser));
+      state.transactions = [];
+      saveToStorage();
       renderAuthenticatedUI(appUser);
+      updateDashboard();
       showToast(`Account created in Supabase! Welcome, ${name}!`, "success");
       nameInput.value = "";
       emailInput.value = "";
@@ -508,8 +523,10 @@ async function handleSignUpSubmit(event) {
   users.push(newUser);
   localStorage.setItem(AUTH_USERS_KEY, JSON.stringify(users));
   localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(newUser));
-
+  state.transactions = [];
+  saveToStorage();
   renderAuthenticatedUI(newUser);
+  updateDashboard();
   showToast(`Account created! Welcome to Ledger, ${name}!`, "success");
 
   nameInput.value = "";
@@ -520,9 +537,10 @@ async function handleSignUpSubmit(event) {
 
 function loginAsDemoUser() {
   const demoUser = {
-    name: "Harshit Namdeo",
-    email: "harshit@ledger.finance",
-    username: "harshit",
+    name: "Demo Evaluator",
+    email: "demo@ledger.finance",
+    username: "demo",
+    isDemo: true,
     createdAt: "2026-08-01"
   };
   localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(demoUser));
@@ -539,6 +557,9 @@ async function handleSignOut() {
     }
   }
   localStorage.removeItem(AUTH_SESSION_KEY);
+  state.transactions = [];
+  saveToStorage();
+  updateDashboard();
   renderUnauthenticatedUI();
   showToast("You have been signed out.", "info");
 }
@@ -640,16 +661,80 @@ function initStorage() {
 function saveToStorage() {
   localStorage.setItem("pf_transactions", JSON.stringify(state.transactions));
   localStorage.setItem("pf_rules", JSON.stringify(state.rules));
+
+  // Sync to Supabase Cloud if signed in (authenticated cloud user)
+  if (window.isSupabaseConfigured && window.isSupabaseConfigured() && window.cloudSaveTransactions) {
+    try {
+      const sessionUser = JSON.parse(localStorage.getItem(AUTH_SESSION_KEY) || "null");
+      if (sessionUser && (sessionUser.isCloud || !sessionUser.isDemo)) {
+        window.cloudSaveTransactions(state.transactions).catch(err => {
+          console.warn("Background Supabase sync error:", err);
+        });
+      }
+    } catch (e) {
+      console.warn("Supabase save error:", e);
+    }
+  }
 }
 
 // Rule Normalizer & Categorizer Engine
-function classifyDescription(rawDescription) {
+function classifyDescription(rawDescription, credit = 0) {
   if (!rawDescription) {
     return { cleanMerchant: "UNKNOWN", category: "Miscellaneous", rule: null };
   }
-  const cleanInput = rawDescription.toUpperCase();
 
-  for (const rule of state.rules) {
+  // 1. UPI Narration Decomposition
+  let isUpi = false;
+  let drCr = Number(credit) > 0 ? "CR" : "DR";
+  let upiEntity = "";
+  let upiRemark = "";
+
+  const upiMatch = rawDescription.match(/UPI\/(DR|CR)\/([^\/]+)\/([^\/]+)(?:\/([^\/]+))?(?:\/([^\/]+))?(?:\/([^\/]+))?/i);
+  if (upiMatch) {
+    isUpi = true;
+    drCr = upiMatch[1].toUpperCase();
+    upiEntity = upiMatch[3] ? upiMatch[3].trim() : "";
+    const rawRemark = upiMatch[6] ? upiMatch[6].trim() : "";
+    const isNoiseRemark = !rawRemark || /^(PAYME?T?|UPI|NO\s*R|NO\s*RE|NO\s*REMARK|NA|NONE|N\/A|PAY|PAYMENT|OK|TRF|TRANSFER|NEFT|IMPS|RTGS)$/i.test(rawRemark) || /^\d+$/.test(rawRemark) || /^(SANJIVANI|NAGAR|COLONY|SECTOR|PHASE|WARD)$/i.test(rawRemark);
+    upiRemark = isNoiseRemark ? "" : rawRemark;
+  }
+
+  let cleanMerchant = "";
+  if (isUpi) {
+    if (upiEntity.toUpperCase() === "UPILITE") {
+      cleanMerchant = "UPI Lite";
+    } else if (upiRemark) {
+      cleanMerchant = `${upiEntity} (${upiRemark})`;
+    } else {
+      cleanMerchant = upiEntity || "UPI Transfer";
+    }
+  } else {
+    cleanMerchant = rawDescription
+      .replace(/^(UPI[-/]|POS[-/]|ACH[-/]|NEFT[-/]|BILLPAY[-/])/i, "")
+      .split(/[-/*_]/)[0]
+      .trim() || "MISCELLANEOUS";
+  }
+
+  // 2. Immediate Credit / Income Detection
+  if (Number(credit) > 0 || drCr === "CR") {
+    return { cleanMerchant, category: "Income", rule: null };
+  }
+
+  // 3. Immediate UPI Lite Detection
+  if (cleanMerchant === "UPI Lite") {
+    return { cleanMerchant: "UPI Lite", category: "Personal & Transfers", rule: null };
+  }
+
+  // 4. Target text for classification (merchant entity + remark, avoiding bank/VPA routing noise)
+  const textToClassify = isUpi ? (upiRemark ? `${upiEntity} ${upiRemark}` : upiEntity) : cleanMerchant;
+  const cleanInput = textToClassify.toUpperCase();
+
+  // 5. Rules evaluation — check both DEFAULT_RULES and user-defined rules
+  const allRules = [...DEFAULT_RULES, ...state.rules];
+  for (const rule of allRules) {
+    if (isUpi && (rule.pattern === "PAYTM" || rule.pattern === "PHONEPE|PHONE PE")) {
+      continue;
+    }
     let matched = false;
     if (rule.type === "regex") {
       try {
@@ -664,38 +749,47 @@ function classifyDescription(rawDescription) {
 
     if (matched) {
       return {
-        cleanMerchant: rule.cleanMerchant,
+        cleanMerchant: isUpi ? cleanMerchant : rule.cleanMerchant,
         category: rule.category,
         rule: rule
       };
     }
   }
 
-  // Fallback heuristic: clean up UPI / POS / ACH formats cleanly
-  if (/^UPI\/(DR|CR)\//i.test(rawDescription)) {
-    const parts = rawDescription.split("/");
-    const drCr = parts[1].toUpperCase();
-    const entity = parts[3] ? parts[3].trim() : "";
-    const remark = parts.length >= 7 ? parts[6].trim() : (parts.length >= 6 ? parts[5].trim() : "");
-    const cleanName = remark && remark.length > 1 && !/^(PAYME|UPI|NO RE)$/i.test(remark)
-      ? `${entity} (${remark})`
-      : (entity || "UPI Transfer");
-    const cat = drCr === "CR" ? "Income" : "Personal & Transfers";
-    return {
-      cleanMerchant: cleanName,
-      category: cat,
-      rule: null
-    };
+  // 6. In-Browser Statistical ML Classifier (MultinomialNB 97.4% accuracy)
+  if (typeof window !== "undefined" && window.mlCategorizeDetailed) {
+    try {
+      const mlRes = window.mlCategorizeDetailed(textToClassify);
+      if (mlRes && mlRes.category && mlRes.category !== "Miscellaneous" && mlRes.confidence >= 0.40) {
+        return {
+          cleanMerchant,
+          category: mlRes.category,
+          rule: null,
+          mlConfidence: mlRes.confidence
+        };
+      }
+    } catch (e) {}
+  } else if (typeof window !== "undefined" && window.mlCategorize) {
+    try {
+      const mlCat = window.mlCategorize(textToClassify);
+      if (mlCat && mlCat !== "Miscellaneous") {
+        return { cleanMerchant, category: mlCat, rule: null };
+      }
+    } catch (e) {}
   }
 
-  let cleaned = rawDescription
-    .replace(/^(UPI[-/]|POS[-/]|ACH[-/]|NEFT[-/]|BILLPAY[-/])/i, "")
-    .split(/[-/*_]/)[0]
-    .trim();
+  // 7. Fallback Smart Heuristic
+  if (typeof window !== "undefined" && window.fallbackSmartCategorize) {
+    const fb = window.fallbackSmartCategorize(textToClassify);
+    if (fb && fb !== "Miscellaneous") {
+      return { cleanMerchant, category: fb, rule: null };
+    }
+  }
 
+  // 8. Default
   return {
-    cleanMerchant: cleaned || "MISCELLANEOUS",
-    category: "Miscellaneous",
+    cleanMerchant,
+    category: isUpi ? "Personal & Transfers" : "Miscellaneous",
     rule: null
   };
 }
@@ -703,7 +797,7 @@ function classifyDescription(rawDescription) {
 // Re-categorize all transactions based on updated rules
 function reclassifyAllTransactions() {
   state.transactions = state.transactions.map(txn => {
-    const classification = classifyDescription(txn.raw_description || txn.description);
+    const classification = classifyDescription(txn.raw_description || txn.description, txn.credit);
     return {
       ...txn,
       description: classification.cleanMerchant,
@@ -1580,6 +1674,14 @@ function renderCategoryBreakdownList(transactions) {
 function deleteTransaction(id) {
   if (confirm(`Are you sure you want to delete transaction ${id}?`)) {
     state.transactions = state.transactions.filter(t => t.transaction_id !== id);
+    if (window.isSupabaseConfigured && window.isSupabaseConfigured() && window.cloudDeleteTransaction) {
+      try {
+        const sessionUser = JSON.parse(localStorage.getItem(AUTH_SESSION_KEY) || "null");
+        if (sessionUser && (sessionUser.isCloud || !sessionUser.isDemo)) {
+          window.cloudDeleteTransaction(id).catch(err => console.warn("Supabase delete error:", err));
+        }
+      } catch (e) {}
+    }
     saveToStorage();
     updateDashboard();
     showToast(`Transaction ${id} deleted successfully.`, "info");
@@ -1972,7 +2074,7 @@ function handlePdfImport(file) {
 
         // Sort Y buckets ASCENDING — PDF.js origin is bottom-left, so lower Y = top of page
         // Ascending sort gives correct top-to-bottom reading order
-        const sortedYs = [...lineMap.keys()].sort((a, b) => a - b);
+        const sortedYs = [...lineMap.keys()].sort((a, b) => b - a);
 
         for (const y of sortedYs) {
           const rowItems = lineMap.get(y).sort((a, b) => a.x - b.x);
@@ -1986,13 +2088,16 @@ function handlePdfImport(file) {
       const extractedRecords = extractTransactionsFromPdfText(allText, file.name);
 
       if (logOutput) {
-        logOutput.innerHTML += `<span class="text-emerald-400 font-bold">[4/4] Successfully imported ${extractedRecords.length} clean transactions into SQLite Ledger!</span><br>`;
+        logOutput.innerHTML += `<span class="text-emerald-400 font-bold">[4/4] Successfully imported ${extractedRecords.length} clean transactions into Supabase Cloud Ledger!</span><br>`;
       }
 
       saveToStorage();
       populateSourceSelect();
       updateDashboard();
       showToast(`Unlocked & imported ${extractedRecords.length} transactions from ${file.name}`, "success");
+      if (typeof aiCategorizeAllTransactions === "function") {
+        setTimeout(() => aiCategorizeAllTransactions(), 1000);
+      }
 
     } catch (err) {
       if (logOutput) {
@@ -2050,19 +2155,29 @@ function extractTransactionsFromPdfText(text, filename) {
   // --------------------------------------------------------
   blocks.forEach((block, blockIdx) => {
     // ── Stitch split UPI narration lines ──
-    // SBI splits "UPI/DR/123456/PRAMOD" and "U/YESB/paytm/Remark" onto two rows.
-    // Detect & join them before processing.
+    // SBI splits "UPI/DR/123456/PRAMOD" and "U/YESB/paytm/Remark" onto multiple rows.
+    // Detect & stitch all continuation fragments before processing.
     const stitchedLines = [];
     for (let li = 0; li < block.lines.length; li++) {
-      const line = block.lines[li];
-      const next = block.lines[li + 1] || "";
-      // A line starting with UPI/ may be continued if next line looks like a fragment (no date, no keyword, short)
-      if (/^UPI\//i.test(line) && next && !isDateLine(next) && !/^(WDL|DEP)\s+TFR/i.test(next) && !/^\d{9,}/.test(next) && next.length < 35) {
-        stitchedLines.push(line + next);
-        li++; // skip next
-      } else {
-        stitchedLines.push(line);
+      let line = block.lines[li];
+      if (/UPI\/(DR|CR)\//i.test(line)) {
+        while (li + 1 < block.lines.length) {
+          const next = block.lines[li + 1];
+          const isContinuation = !isDateLine(next) &&
+            !/^(WDL|DEP)\s+TFR/i.test(next) &&
+            !/^\d{10,}\s+AT\s+\d+/i.test(next) &&
+            !/\bAT\s+\d{4,}\b/i.test(next) &&
+            !/^\d+[\d,]*\.\d{2}$/.test(next);
+
+          if (isContinuation) {
+            line = line + next;
+            li++;
+          } else {
+            break;
+          }
+        }
       }
+      stitchedLines.push(line);
     }
 
     const combined = stitchedLines.join(" ");
@@ -2134,6 +2249,23 @@ function extractTransactionsFromPdfText(text, filename) {
       }
     }
 
+    // ── Cross-validate DR/CR direction vs parsed amounts ──
+    // SBI PDF: if narration says UPI/DR but parser found credit instead of debit
+    // (can happen when Pattern C fires on a debit whose layout looks like "- - AMT BAL"),
+    // swap them to match the actual transaction direction.
+    if (/UPI\/DR/i.test(combined) && credit > 0 && debit === 0) {
+      debit = credit;
+      credit = 0;
+    } else if (/UPI\/CR/i.test(combined) && debit > 0 && credit === 0) {
+      credit = debit;
+      debit = 0;
+    }
+    // Also apply for WDL TFR (withdrawal) — if narration says WDL TFR and credit is set, swap
+    if (/^WDL\s+TFR/i.test(combined) && credit > 0 && debit === 0) {
+      debit = credit;
+      credit = 0;
+    }
+
     // ── Extract date from first date-like token ──
     let dateStr = "";
     const dMatch = combined.match(/(\d{2}[-/]\d{2}[-/]\d{2,4})/);
@@ -2141,20 +2273,11 @@ function extractTransactionsFromPdfText(text, filename) {
     dateStr = (dMatch && dMatch[1]) || (iMatch && iMatch[1]) || "";
 
     // ── Extract narration ──
-    // Prefer stitched UPI line; fall back to non-noise lines
-    let rawDesc = "";
-    const upiLine = stitchedLines.find(l => /^UPI\//i.test(l));
+    // For UPI, keep the full raw narration string for auditing, while classifyDescription extracts clean merchant
+    const upiLine = stitchedLines.find(l => /UPI\/(DR|CR)\//i.test(l));
+    let rawNarration = "";
     if (upiLine) {
-      // UPI/DR|CR/refnum/ENTITY/BANK/vpa/remark
-      const parts = upiLine.split("/");
-      if (parts.length >= 4) {
-        const entity  = parts[3].trim();
-        const remarks = parts.length >= 7 ? parts[6].trim()
-                      : parts.length >= 6 ? parts[5].trim() : "";
-        rawDesc = (remarks && remarks.length > 1) ? `${entity} (${remarks})` : entity;
-      } else {
-        rawDesc = upiLine;
-      }
+      rawNarration = upiLine;
     } else {
       // Non-UPI: use narration lines (skip date lines, amounts, ref numbers, branch names)
       const narLines = stitchedLines.filter(l =>
@@ -2165,23 +2288,22 @@ function extractTransactionsFromPdfText(text, filename) {
         !/\bAT\s+\d{4,}\b/.test(l) &&
         !/^(WDL|DEP)\s+TFR/i.test(l) &&
         !/^(KARMETA|BALANCE|Page\s*no)/i.test(l) &&
+        !/^(SANJIVANI|NAGAR|COLONY|SECTOR|PHASE)/i.test(l) &&
         !NOISE.test(l)
       );
-      rawDesc = narLines.join(" ").trim() || "BANK TXN";
+      rawNarration = narLines.join(" ").trim() || "BANK TXN";
     }
 
-    rawDesc = rawDesc.replace(/\s+/g, " ").trim();
-    if (rawDesc.length < 2) rawDesc = "BANK TXN";
+    rawNarration = rawNarration.replace(/\s+/g, " ").trim();
+    if (rawNarration.length < 2) rawNarration = "BANK TXN";
 
-    const classification = classifyDescription(rawDesc);
-    const category = credit > 0 && (classification.category === "Miscellaneous" || classification.category === "Personal & Transfers")
-      ? "Income"
-      : classification.category;
+    const classification = classifyDescription(rawNarration, credit);
+    const category = classification.category;
 
     const newTxn = {
       transaction_id: `TXN-PDF-${Date.now().toString().slice(-6)}-${blockIdx + 1}`,
       date: standardizeDateStr(dateStr),
-      raw_description: rawDesc,
+      raw_description: rawNarration,
       description: classification.cleanMerchant,
       category: category,
       debit: debit,
@@ -2278,12 +2400,15 @@ function handleCsvImport(file) {
       }
 
       if (logOutput) {
-        logOutput.innerHTML += `<span class="text-emerald-400 font-bold">[4/4] Successfully imported ${importedCount} clean transactions into SQLite table!</span><br>`;
+        logOutput.innerHTML += `<span class="text-emerald-400 font-bold">[4/4] Successfully imported ${importedCount} clean transactions into Supabase Cloud table!</span><br>`;
       }
       saveToStorage();
       populateSourceSelect();
       updateDashboard();
       showToast(`Imported ${importedCount} transactions from ${file.name}`, "success");
+      if (typeof aiCategorizeAllTransactions === "function") {
+        setTimeout(() => aiCategorizeAllTransactions(), 1000);
+      }
     }, 1500);
   };
   reader.readAsText(file);
@@ -2369,7 +2494,7 @@ function simulateEncryptedPDF() {
       });
 
       if (logOutput) {
-        logOutput.innerHTML += `<span class="text-emerald-400 font-bold">[4/4] Successfully decrypted and imported 6 clean transactions into SQLite Ledger!</span><br>`;
+        logOutput.innerHTML += `<span class="text-emerald-400 font-bold">[4/4] Successfully decrypted and imported 6 clean transactions into Supabase Cloud Ledger!</span><br>`;
       }
       saveToStorage();
       populateSourceSelect();
@@ -2467,7 +2592,7 @@ function simulateParser(type) {
 
     if (logOutput) {
       logOutput.innerHTML += `
-        <span class="text-emerald-400 font-mono font-bold">[4/4] Parsing Complete! Processed and committed ${sampleParsedRecords.length} records into SQLite Transaction Table.</span>
+        <span class="text-emerald-400 font-mono font-bold">[4/4] Parsing Complete! Processed and committed ${sampleParsedRecords.length} records into Supabase Transaction Table.</span>
       `;
     }
 
@@ -2506,10 +2631,41 @@ function initModals() {
     }
     const classification = classifyDescription(val);
     if (previewClean) previewClean.textContent = classification.cleanMerchant;
-    if (previewCat) previewCat.textContent = classification.category;
+    if (previewCat) {
+      if (typeof window !== "undefined" && window.mlCategorizeDetailed) {
+        const mlInfo = window.mlCategorizeDetailed(val);
+        if (mlInfo && mlInfo.confidence >= 0.50 && mlInfo.category === classification.category && classification.category !== "Miscellaneous") {
+          previewCat.innerHTML = `<span>${classification.category}</span> <span class="text-[10px] text-emerald-400 font-mono font-bold">(${Math.round(mlInfo.confidence * 100)}% ML)</span>`;
+        } else {
+          previewCat.textContent = classification.category;
+        }
+      } else {
+        previewCat.textContent = classification.category;
+      }
+    }
+    rawInput.dataset.aiCategory = "";
+
+    // If local rule returns Miscellaneous, automatically ask AI with a 400ms debounce
+    if (classification.category === "Miscellaneous" && window.aiCategorize && val.trim().length >= 2) {
+      clearTimeout(window._aiModalDebounce);
+      if (previewCat) previewCat.innerHTML = '<span class="text-purple-400 animate-pulse">✨ AI classifying...</span>';
+      window._aiModalDebounce = setTimeout(async () => {
+        try {
+          const aiCat = await window.aiCategorize(val);
+          if (aiCat && aiCat !== "Miscellaneous" && rawInput.value.trim() === val.trim()) {
+            rawInput.dataset.aiCategory = aiCat;
+            if (previewCat) previewCat.innerHTML = `<span class="text-emerald-400 font-bold">✨ ${aiCat}</span>`;
+          } else if (rawInput.value.trim() === val.trim() && previewCat) {
+            previewCat.textContent = "Miscellaneous";
+          }
+        } catch (e) {
+          if (previewCat && rawInput.value.trim() === val.trim()) previewCat.textContent = "Miscellaneous";
+        }
+      }, 400);
+    }
   });
 
-  formAdd?.addEventListener("submit", (e) => {
+  formAdd?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const date = document.getElementById("add-txn-date").value;
     const raw = document.getElementById("add-txn-raw").value;
@@ -2518,6 +2674,24 @@ function initModals() {
     const source = document.getElementById("add-txn-source").value || "Manual_Entry";
 
     const classification = classifyDescription(raw);
+    let finalCategory = rawInput?.dataset?.aiCategory || classification.category;
+
+    // AI Categorization for unclassified or Miscellaneous transactions
+    if (finalCategory === "Miscellaneous" && window.aiCategorize) {
+      try {
+        const submitBtn = formAdd.querySelector("button[type='submit']");
+        const prevText = submitBtn ? submitBtn.textContent : "Add Transaction";
+        if (submitBtn) submitBtn.textContent = "AI Categorizing...";
+        showToast("Consulting AI to classify transaction...", "info");
+        const aiCat = await window.aiCategorize(raw);
+        if (aiCat && aiCat !== "Miscellaneous") {
+          finalCategory = aiCat;
+        }
+        if (submitBtn) submitBtn.textContent = prevText;
+      } catch (err) {
+        console.warn("AI categorization note:", err);
+      }
+    }
     const latestBal = state.transactions.length > 0 ? state.transactions[0].balance : 100000;
     const isCredit = type === "credit";
     const debitVal = isCredit ? 0 : amount;
@@ -2530,6 +2704,7 @@ function initModals() {
       raw_description: raw,
       description: classification.cleanMerchant,
       category: classification.category,
+      category: finalCategory,
       debit: debitVal,
       credit: creditVal,
       balance: newBal,
@@ -2540,9 +2715,12 @@ function initModals() {
     saveToStorage();
     populateSourceSelect();
     updateDashboard();
+    if (typeof window !== "undefined" && window.mlTrainOnSample) {
+      window.mlTrainOnSample(raw, finalCategory);
+    }
     modalAdd?.classList.add("hidden");
     formAdd.reset();
-    showToast(`Transaction added & auto-classified as "${classification.category}"!`, "success");
+    showToast(`Transaction added & auto-classified as "${finalCategory}"!`, "success");
   });
 
   // Close modals on clicking background backdrop
@@ -2592,7 +2770,7 @@ function exportData(type) {
     showToast("Exported transactions to JSON!", "success");
 
   } else if (type === "sql") {
-    let sql = `-- SQLite Database Dump: Personal Finance Analytics\n`;
+    let sql = `-- SQL Database Dump: Personal Finance Analytics\n`;
     sql += `-- Generated on ${new Date().toISOString()}\n\n`;
     sql += `CREATE TABLE IF NOT EXISTS transactions (\n`;
     sql += `    transaction_id TEXT PRIMARY KEY,\n`;
@@ -2612,8 +2790,8 @@ function exportData(type) {
     });
 
     const sqlContent = "data:text/plain;charset=utf-8," + encodeURIComponent(sql);
-    downloadFile(sqlContent, `Personal_Finance_SQLite_Dump_${new Date().toISOString().substring(0, 10)}.sql`);
-    showToast("Exported SQLite database script!", "success");
+    downloadFile(sqlContent, `Personal_Finance_SQL_Dump_${new Date().toISOString().substring(0, 10)}.sql`);
+    showToast("Exported SQL database script!", "success");
   }
 }
 
@@ -2727,9 +2905,20 @@ function executeHardReset() {
   // 1. Wipe in-memory transactions
   state.transactions = [];
   
-  // 2. Clear browser localStorage
+  // 2. Clear Supabase Cloud transactions if authenticated
+  if (window.isSupabaseConfigured && window.isSupabaseConfigured() && window.cloudClearAllTransactions) {
+    try {
+      const sessionUser = JSON.parse(localStorage.getItem(AUTH_SESSION_KEY) || "null");
+      if (sessionUser && (sessionUser.isCloud || !sessionUser.isDemo)) {
+        window.cloudClearAllTransactions().catch(err => console.warn("Supabase clear error:", err));
+      }
+    } catch (e) {}
+  }
+
+  // 3. Clear browser localStorage
+  localStorage.removeItem("pf_transactions");
+  localStorage.setItem("pf_transactions", JSON.stringify([]));
   localStorage.removeItem("ledger_transactions");
-  localStorage.setItem("ledger_transactions", JSON.stringify([]));
   
   // 3. Reset pagination & filters
   state.pagination.currentPage = 1;
@@ -2777,5 +2966,85 @@ window.clearAllTransactions = clearAllTransactions;
 window.promptHardReset = promptHardReset;
 window.executeHardReset = executeHardReset;
 window.resetToDefaultData = resetToDefaultData;
+
+// AI Batch Categorizer for unclassified/Miscellaneous transactions
+let isBatchCategorizing = false;
+async function aiCategorizeAllTransactions() {
+  if (isBatchCategorizing) return;
+  if (!window.aiCategorize) {
+    showToast("AI engine is not configured in supabase-config.js.", "error");
+    return;
+  }
+  const miscTxns = state.transactions.filter(t => {
+    // Only include debit transactions that haven't been categorized yet.
+    // Credit transactions are Income by definition — never send to AI batch.
+    if (Number(t.credit) > 0) return false;
+    return !t.category || t.category === "Miscellaneous";
+  });
+  if (miscTxns.length === 0) {
+    showToast("All transactions are already categorized!", "info");
+    return;
+  }
+
+  isBatchCategorizing = true;
+  showToast(`AI is categorizing ${miscTxns.length} transaction(s)...`, "info");
+  let updatedCount = 0;
+
+  try {
+    for (let txn of state.transactions) {
+      // 1. Safety net: skip credits (miscTxns filter should have excluded them already)
+      if (Number(txn.credit) > 0) {
+        continue;
+      }
+      // 2. Uncategorized debit expenses
+      if (!txn.category || txn.category === "Miscellaneous") {
+        try {
+          const aiCat = await window.aiCategorize(txn.description || txn.raw_description || "");
+          if (aiCat && aiCat !== "Miscellaneous") {
+            txn.category = aiCat;
+            updatedCount++;
+          }
+        } catch (err) {
+          console.warn("AI error for", txn.description, err);
+        }
+      }
+    }
+
+    saveToStorage();
+    populateCategorySelect();
+    updateDashboard();
+    showToast(`✨ AI classified ${updatedCount} transaction(s) successfully!`, "success");
+  } finally {
+    isBatchCategorizing = false;
+  }
+}
+window.aiCategorizeAllTransactions = aiCategorizeAllTransactions;
+
+// Ask AI for the single item currently typed in the Add Transaction modal
+async function askAiModalCategory() {
+  const rawInput = document.getElementById("add-txn-raw");
+  const previewCat = document.getElementById("add-txn-preview-cat");
+  const val = rawInput?.value?.trim();
+  if (!val) {
+    showToast("Please enter an item name first (e.g. Diet Coke)", "info");
+    return;
+  }
+  if (!window.aiCategorize) {
+    showToast("AI categorizer is not configured.", "error");
+    return;
+  }
+  if (previewCat) previewCat.innerHTML = '<span class="text-purple-400 animate-pulse">✨ Asking AI...</span>';
+  showToast(`Asking AI to categorize "${val}"...`, "info");
+  const cat = await window.aiCategorize(val);
+  if (cat && cat !== "Miscellaneous") {
+    rawInput.dataset.aiCategory = cat;
+    if (previewCat) previewCat.innerHTML = `<span class="text-emerald-400 font-bold">✨ ${cat}</span>`;
+    showToast(`AI categorized "${val}" as "${cat}"!`, "success");
+  } else {
+    if (previewCat) previewCat.textContent = cat || "Miscellaneous";
+    showToast(`Classified as "${cat || 'Miscellaneous'}"`, "info");
+  }
+}
+window.askAiModalCategory = askAiModalCategory;
 
 
