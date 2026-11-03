@@ -315,6 +315,17 @@ function initAuth() {
   }
 }
 
+function isCurrentSessionDemo() {
+  try {
+    const u = JSON.parse(localStorage.getItem(AUTH_SESSION_KEY) || "null");
+    if (!u) return false;
+    // An account is demo ONLY if explicitly flagged isDemo: true or using the demo evaluator email/username
+    return Boolean(u.isDemo === true || u.email === "demo@ledger.finance" || u.username === "demo");
+  } catch (e) {
+    return false;
+  }
+}
+
 function renderAuthenticatedUI(user) {
   const authContainer = document.getElementById("auth-container");
   const appContainer = document.getElementById("app-container");
@@ -341,8 +352,10 @@ function renderAuthenticatedUI(user) {
     demoElements.forEach(el => {
       if (isDemo) {
         el.classList.remove("hidden");
+        el.style.display = "";
       } else {
         el.classList.add("hidden");
+        el.style.display = "none";
       }
     });
   }
@@ -412,10 +425,13 @@ async function handleSignInSubmit(event) {
         id: user.id,
         name: user.user_metadata?.full_name || user.email.split("@")[0],
         email: user.email,
-        isCloud: true
+        isCloud: true,
+        isDemo: false
       };
       localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(appUser));
+      initStorage(); // Load this specific user's cache or start clean
       renderAuthenticatedUI(appUser);
+      updateDashboard();
       showToast(`Welcome back, ${appUser.name}! (Cloud Verified)`, "success");
       idInput.value = "";
       passInput.value = "";
@@ -441,7 +457,9 @@ async function handleSignInSubmit(event) {
 
   if (matchedUser) {
     localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(matchedUser));
+    initStorage();
     renderAuthenticatedUI(matchedUser);
+    updateDashboard();
     showToast(`Welcome back, ${matchedUser.name}!`, "success");
     idInput.value = "";
     passInput.value = "";
@@ -603,6 +621,83 @@ function showDemoCredentials() {
   }
 }
 
+
+// ==========================================
+// FORGOT PASSWORD / PASSWORD RECOVERY
+// ==========================================
+function openForgotPasswordModal() {
+  const modal = document.getElementById("modal-forgot-password");
+  const alertBox = document.getElementById("forgot-alert");
+  const emailInput = document.getElementById("forgot-email");
+  const currentLoginEmail = document.getElementById("signin-identifier")?.value.trim() || "";
+
+  if (alertBox) alertBox.classList.add("hidden");
+  if (emailInput && currentLoginEmail && currentLoginEmail.includes("@")) {
+    emailInput.value = currentLoginEmail;
+  }
+  if (modal) modal.classList.remove("hidden");
+}
+
+function closeForgotPasswordModal() {
+  const modal = document.getElementById("modal-forgot-password");
+  if (modal) modal.classList.add("hidden");
+}
+
+async function handleForgotPasswordSubmit(event) {
+  event.preventDefault();
+  const emailInput = document.getElementById("forgot-email");
+  const alertBox = document.getElementById("forgot-alert");
+  const alertIcon = document.getElementById("forgot-alert-icon");
+  const alertText = document.getElementById("forgot-alert-text");
+  const submitBtn = document.getElementById("btn-submit-forgot");
+
+  if (!emailInput) return;
+  const email = emailInput.value.trim().toLowerCase();
+  if (!email) return;
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = "<span>Sending link...</span>";
+  }
+
+  try {
+    if (window.isSupabaseConfigured && window.isSupabaseConfigured() && window.cloudResetPassword) {
+      await window.cloudResetPassword(email);
+      if (alertBox && alertText && alertIcon) {
+        alertBox.className = "p-3 rounded-xl text-xs font-medium border bg-emerald-500/10 border-emerald-500/30 text-emerald-400 flex items-center space-x-2";
+        alertIcon.textContent = "✓";
+        alertText.textContent = `Password reset link sent to ${email}! Please check your email inbox.`;
+        alertBox.classList.remove("hidden");
+      }
+      showToast("Password reset link sent! Check your email.", "success");
+      setTimeout(() => {
+        closeForgotPasswordModal();
+      }, 3500);
+    } else {
+      // Local fallback
+      if (alertBox && alertText && alertIcon) {
+        alertBox.className = "p-3 rounded-xl text-xs font-medium border bg-indigo-500/10 border-indigo-500/30 text-indigo-400 flex items-center space-x-2";
+        alertIcon.textContent = "ℹ";
+        alertText.textContent = `A password recovery link has been simulated for ${email}.`;
+        alertBox.classList.remove("hidden");
+      }
+      showToast("Recovery instruction generated.", "info");
+    }
+  } catch (err) {
+    if (alertBox && alertText && alertIcon) {
+      alertBox.className = "p-3 rounded-xl text-xs font-medium border bg-rose-500/10 border-rose-500/30 text-rose-400 flex items-center space-x-2";
+      alertIcon.textContent = "✕";
+      alertText.textContent = err.message || "Failed to send reset link. Verify your email.";
+      alertBox.classList.remove("hidden");
+    }
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = "<span>Send Reset Link</span>";
+    }
+  }
+}
+
 // Initialize Application
 document.addEventListener("DOMContentLoaded", () => {
   initTheme();
@@ -620,22 +715,24 @@ document.addEventListener("DOMContentLoaded", () => {
 // Load storage or defaults
 const APP_STORAGE_VERSION = "v9";
 
-function initStorage() {
-  // ── One-time migration: wipe stale data from old versions ──
-  // If the stored version key doesn't match, the user has old mixed/demo data
-  // from a previous session. Clear it so they start fresh.
-  const storedVersion = localStorage.getItem("pf_app_version");
-  if (storedVersion !== APP_STORAGE_VERSION) {
-    localStorage.removeItem("pf_transactions");
-    localStorage.removeItem("pf_rules");
-    localStorage.setItem("pf_app_version", APP_STORAGE_VERSION);
-    // Start with NO transactions — ready to upload real bank statement
-    state.transactions = [];
-    state.rules = [...DEFAULT_RULES];
-    return;
+function getUserStorageKey() {
+  try {
+    const u = JSON.parse(localStorage.getItem(AUTH_SESSION_KEY) || "null");
+    if (!u) return "guest";
+    return u.id || u.email || "guest";
+  } catch (e) {
+    return "guest";
   }
+}
 
-  const savedTxns = localStorage.getItem("pf_transactions");
+function initStorage() {
+  const userKey = getUserStorageKey();
+  const txKey = "pf_txns_" + userKey;
+  
+  // Clean legacy shared storage to prevent cross-account contamination
+  localStorage.removeItem("ledger_transactions");
+  
+  const savedTxns = localStorage.getItem(txKey);
   if (savedTxns) {
     try {
       state.transactions = JSON.parse(savedTxns);
@@ -659,6 +756,8 @@ function initStorage() {
 }
 
 function saveToStorage() {
+  const userKey = getUserStorageKey();
+  localStorage.setItem("pf_txns_" + userKey, JSON.stringify(state.transactions));
   localStorage.setItem("pf_transactions", JSON.stringify(state.transactions));
   localStorage.setItem("pf_rules", JSON.stringify(state.rules));
 
@@ -1492,12 +1591,22 @@ function renderTransactionTable(transactions) {
           <div class="text-sm font-semibold text-slate-200 mb-1">No Transactions Found</div>
           <p class="text-xs text-slate-400 max-w-sm mx-auto mb-4">No records match the active filters, or the database is currently empty.</p>
           <div class="flex items-center justify-center space-x-3">
+            ${isCurrentSessionDemo() ? `
             <button onclick="addQuickSampleBatch(5)" class="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold rounded-xl text-xs shadow-lg shadow-amber-500/20 transition flex items-center space-x-1.5">
               <span>⚡ Add 5 Sample Transactions</span>
             </button>
             <button onclick="resetToDefaultData()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl text-xs border border-slate-700 transition">
               🔄 Restore Full 54 Records
             </button>
+            ` : `
+            <button onclick="document.querySelector('[data-target=\\'section-parser\\']')?.click()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl text-xs shadow-lg shadow-indigo-600/30 transition flex items-center space-x-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+              <span>Upload Bank Statement</span>
+            </button>
+            <button onclick="document.getElementById('btn-open-add-modal')?.click()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl text-xs border border-slate-700 transition flex items-center space-x-1.5">
+              <span>+ Add Transaction</span>
+            </button>
+            `}
           </div>
         </td>
       </tr>`;
@@ -2916,6 +3025,8 @@ function executeHardReset() {
   }
 
   // 3. Clear browser localStorage
+  const userKey = getUserStorageKey();
+  localStorage.removeItem("pf_txns_" + userKey);
   localStorage.removeItem("pf_transactions");
   localStorage.setItem("pf_transactions", JSON.stringify([]));
   localStorage.removeItem("ledger_transactions");
@@ -3048,3 +3159,8 @@ async function askAiModalCategory() {
 window.askAiModalCategory = askAiModalCategory;
 
 
+
+window.openForgotPasswordModal = openForgotPasswordModal;
+window.closeForgotPasswordModal = closeForgotPasswordModal;
+window.handleForgotPasswordSubmit = handleForgotPasswordSubmit;
+window.getUserStorageKey = getUserStorageKey;
